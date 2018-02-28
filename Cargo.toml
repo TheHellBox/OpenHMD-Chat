@@ -1,0 +1,11 @@
+[package]
+name = "openhmd-chat"
+version = "0.1.0"
+authors = ["TheHellBox <hellboxstudio@yandex.ru>"]
+
+[dependencies]
+glium="*"
+openhmd-rs="0.1.4"
+tobj="*"
+image = "*"
+nalgebra="*"
