@@ -77,7 +77,7 @@ fn main(){
         ohmd_context.update();
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
         println!("{:?}", ohmd_orient);
-        camera.set_rot(nalgebra::geometry::UnitQuaternion::from_quaternion(nalgebra::geometry::Quaternion::new(-ohmd_orient[0], ohmd_orient[3], ohmd_orient[2], ohmd_orient[1])));
+        camera.set_rot(nalgebra::geometry::UnitQuaternion::from_quaternion(nalgebra::geometry::Quaternion::new(ohmd_orient[0], ohmd_orient[3], -ohmd_orient[2], ohmd_orient[1])));
         display.draw(&render_data, &program, &camera);
 
     }

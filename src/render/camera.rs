@@ -7,7 +7,7 @@ pub struct Camera {
 
 impl Camera{
     pub fn new() -> Camera{
-        let persp = Perspective3::new(1920.0/1080.0, 3.14 / 4.0, 0.1, 10000.0);
+        let persp = Perspective3::new(960.0/1080.0, 3.14 / 4.0, 0.1, 10000.0);
 
         let view = Isometry3::look_at_rh(&Point3::new(0.0, 0.0, 0.0), &Point3::new(0.0, 0.0, 0.0), &Vector3::new(0.0,1.0,0.0));
 
