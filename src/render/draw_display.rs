@@ -1,15 +1,18 @@
 use glium::{glutin, Display, Program};
 use render;
 use glium;
+use openhmd_rs;
 
 pub struct Draw_Display{
     pub display: Display
 }
 
 impl Draw_Display{
-    pub fn draw(&self, buf: &render::RenderData, prog: &Program, cam: &render::camera::Camera){
+    pub fn draw(&self, buf: &render::RenderData, prog: &Program, eyes: &render::camera::Eyes, device: &openhmd_rs::Device){
         use glium::Surface;
         let mut target = self.display.draw();
+
+
         target.clear_color_and_depth((0.2, 0.2, 0.4, 1.0), 1.0);
 
         let params = glium::DrawParameters {
@@ -41,22 +44,53 @@ impl Draw_Display{
             [ 0.0 , 0.0, 0.0, 1.0f32],
         ];
 
-        let proj = cam.persp.to_homogeneous().as_ref().to_owned();
-        let view = cam.view.to_homogeneous().as_ref().to_owned();
+        let omodelv1 = device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX);
+        let omodelv1 = [
+            [omodelv1[0], omodelv1[1], omodelv1[2], omodelv1[3]],
+            [omodelv1[4], omodelv1[5], omodelv1[6], omodelv1[7]],
+            [omodelv1[8], omodelv1[9], omodelv1[10], omodelv1[11]],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+        let omodelv2 = device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX);
+
+        let omodelv2 = [
+            [omodelv2[0], omodelv2[1], omodelv2[2], omodelv2[3]],
+            [omodelv2[4], omodelv2[5], omodelv2[6], omodelv2[7]],
+            [omodelv2[8], omodelv2[9], omodelv2[10], omodelv2[11]],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+
+        let proj1 = eyes.cam1.persp.to_homogeneous().as_ref().to_owned();
+        let proj2 = eyes.cam2.persp.to_homogeneous().as_ref().to_owned();
+
+        let oproj = device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX);
+        let oproj = [
+            [oproj[0], oproj[1], oproj[2], oproj[3]],
+            [oproj[4], oproj[5], oproj[6], oproj[7]],
+            [oproj[8], oproj[9], oproj[10], oproj[11]],
+            [oproj[12], oproj[13], oproj[14], oproj[15]],
+        ];
+        let oproj2 = device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX);
+        let oproj2 = [
+            [oproj2[0], oproj2[1], oproj2[2], oproj2[3]],
+            [oproj2[4], oproj2[5], oproj2[6], oproj2[7]],
+            [oproj2[8], oproj2[9], oproj2[10], oproj2[11]],
+            [oproj2[12], oproj2[13], oproj2[14], oproj2[15]],
+        ];
 
         for (path, mesh) in &buf.mesh_buf {
             target.draw(
                 &mesh.mesh,
                 &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                 prog,
-                &uniform! { matrix: matrix, perspective: proj, view: view },
+                &uniform! { matrix: matrix, perspective: oproj, view: omodelv1 },
                 &params
             ).unwrap();
             target.draw(
                 &mesh.mesh,
                 &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                 prog,
-                &uniform! { matrix: matrix, perspective: proj, view: view },
+                &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2,u_light: [-1.0, 0.4, 0.9f32]},
                 &params_eye2
             ).unwrap();
         }

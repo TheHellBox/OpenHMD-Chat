@@ -11,6 +11,8 @@ use render::window::Window;
 
 fn main(){
     use std::env;
+    use nalgebra::geometry::UnitQuaternion;
+    use nalgebra::geometry::Quaternion;
     println!("Hello world!");
 
     let args: Vec<_> = env::args().collect();
@@ -62,6 +64,8 @@ fn main(){
 
     let mut camera = render::camera::Camera::new();
 
+    let mut eyes = render::camera::Eyes::new();
+
     let render_data = render::RenderData{
         mesh_buf: mesh_buffer,
         render_obj_buf: render_obj_buffer,
@@ -77,8 +81,12 @@ fn main(){
         ohmd_context.update();
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
         println!("{:?}", ohmd_orient);
-        camera.set_rot(nalgebra::geometry::UnitQuaternion::from_quaternion(nalgebra::geometry::Quaternion::new(ohmd_orient[0], ohmd_orient[3], -ohmd_orient[2], ohmd_orient[1])));
-        display.draw(&render_data, &program, &camera);
+        let ohmd_orient = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[3], -ohmd_orient[2], -ohmd_orient[1])).to_euler_angles();
+        let (orin_x, orin_y, orin_z) = ohmd_orient;
+        let orin_z = orin_z + 3.141593;
+        let ohmd_orient = UnitQuaternion::from_euler_angles(orin_x, orin_y, orin_z);
+        eyes.set_rot(ohmd_orient);
+        display.draw(&render_data, &program, &eyes, &ohmd_device);
 
     }
 }
