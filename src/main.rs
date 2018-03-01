@@ -79,13 +79,6 @@ fn main(){
 
     loop{
         ohmd_context.update();
-        let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
-        println!("{:?}", ohmd_orient);
-        let ohmd_orient = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[3], -ohmd_orient[2], -ohmd_orient[1])).to_euler_angles();
-        let (orin_x, orin_y, orin_z) = ohmd_orient;
-        let orin_z = orin_z + 3.141593;
-        let ohmd_orient = UnitQuaternion::from_euler_angles(orin_x, orin_y, orin_z);
-        eyes.set_rot(ohmd_orient);
         display.draw(&render_data, &program, &eyes, &ohmd_device);
 
     }
