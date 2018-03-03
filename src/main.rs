@@ -24,7 +24,7 @@ fn main(){
     use rand::Rng;
     use std::collections::HashMap;
     use std::time::SystemTime;
-    use std::thread::Thread;
+    use std::thread;
     use std::sync::mpsc;
     use std::ffi::CStr;
 
@@ -41,8 +41,16 @@ fn main(){
             0
         }
     };
-    //Create communication channel
-    let (tx, rx): (mpsc::Sender<u32>, mpsc::Receiver<u32>) = mpsc::channel();
+    {
+        //Create communication channel
+        let (tx, rx): (mpsc::Sender<u32>, mpsc::Receiver<u32>) = mpsc::channel();
+        let mut client = network::Network::new();
+        println!("Connecting to server...");
+        //Conecting to server
+        client.connect("127.0.0.1:4587");
+        client.check(&mut playerlist, &mut render_data);
+        println!("Done!");
+    }
     //Init OpenHMD
     println!("VR mode");
     let ohmd_context = openhmd_rs::Context::new();
@@ -68,10 +76,6 @@ fn main(){
     println!("HMD scrh res {}", scrh);
 
     let mut playerlist: HashMap<u32, player::Player>  = HashMap::with_capacity(128);
-
-    //Network...
-    let mut client = network::Network::new();
-
 
     println!("Opening window...");
     let mut window = Window::new(scrw,scrh,"test");
@@ -118,11 +122,6 @@ fn main(){
 
     println!("Done!");
 
-    println!("Connecting to server...");
-    //Conecting to server
-    client.connect("127.0.0.1:4587");
-    client.check(&mut playerlist, &mut render_data);
-    println!("Done!");
     //Starting main loop
     loop{
         let sys_time = SystemTime::now();
