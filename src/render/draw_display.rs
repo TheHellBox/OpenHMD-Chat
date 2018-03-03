@@ -8,11 +8,11 @@ pub struct Draw_Display{
 }
 
 impl Draw_Display{
-    pub fn draw(&self, buf: &render::RenderData, prog: &Program, eyes: &render::camera::Eyes, device: &openhmd_rs::Device){
+    pub fn draw(&self, buf: &render::RenderData, prog: &Program, eyes: &render::camera::Eyes, device: &openhmd_rs::Device, scr: (u32,u32)){
         use glium::Surface;
         let mut target = self.display.draw();
 
-
+        let (scrw, scrh) = scr;
         target.clear_color_and_depth((0.2, 0.2, 0.4, 1.0), 1.0);
 
         let params = glium::DrawParameters {
@@ -22,7 +22,7 @@ impl Draw_Display{
                 .. Default::default()
             },
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
-            viewport: Some(glium::Rect{left: 0, bottom: 0, width: 960, height: 1080}),
+            viewport: Some(glium::Rect{left: 0, bottom: 0, width: scrw / 2, height: scrh}),
             .. Default::default()
         };
 
@@ -33,16 +33,9 @@ impl Draw_Display{
                 .. Default::default()
             },
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
-            viewport: Some(glium::Rect{left: 960, bottom: 0, width: 960, height: 1080}),
+            viewport: Some(glium::Rect{left: scrw / 2, bottom: 0, width: scrw / 2, height: scrh}),
             .. Default::default()
         };
-
-        let matrix = [
-            [0.1, 0.0, 0.0, 0.0],
-            [0.0, 0.1, 0.0, 0.0],
-            [0.0, 0.0, 0.1, 0.0],
-            [ 0.0 , 0.0, 0.0, 1.0f32],
-        ];
 
         let omodelv1 = device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX);
         let omodelv1 = [
@@ -78,7 +71,16 @@ impl Draw_Display{
             [oproj2[12], oproj2[13], oproj2[14], oproj2[15]],
         ];
 
-        for (path, mesh) in &buf.mesh_buf {
+        for (id, object) in &buf.render_obj_buf {
+            let (x, y, z) = object.position;
+            let matrix = [
+                [0.1, 0.0, 0.0, 0.0],
+                [0.0, 0.1, 0.0, 0.0],
+                [0.0, 0.0, 0.1, 0.0],
+                [ x , y, z, 1.0f32],
+            ];
+            let mesh = buf.mesh_buf.get(&object.mesh_name).unwrap();
+            println!("{}", &object.mesh_name);
             target.draw(
                 &mesh.mesh,
                 &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),

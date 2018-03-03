@@ -19,14 +19,15 @@ pub struct Mesh{
 
 
 pub struct RenderObject{
-    pub id: i32,
-    pub mesh_id: i32,
-    pub tex_id: i32
+    pub mesh_name: String,
+    pub tex_name: String,
+    pub position: (f32, f32, f32),
+    pub rotation: (f32, f32, f32)
 }
 
 pub struct RenderData{
     pub mesh_buf: HashMap<String, Mesh>,
-    pub render_obj_buf: Vec<RenderObject>,
+    pub render_obj_buf: HashMap<u32, RenderObject>,
 }
 
 pub const shader_distortion_frag: &'static str = r#"
