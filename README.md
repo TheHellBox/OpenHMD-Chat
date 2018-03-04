@@ -15,12 +15,21 @@ Still no, you must compile it
 
 # TO DO
 Voice communication
+
 GUI
+
 Text chat
+
 Arguments
+
 Textures
+
 Ability to move around
+
 Gamepad support
+
 Ability to create worlds
+
 Animations
+
 Controllers support
