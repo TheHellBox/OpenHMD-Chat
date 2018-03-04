@@ -1,3 +1,5 @@
+![alt text](https://i.imgur.com/g42Du0u.png)
+
 <a href="https://discord.gg/FY3naJ3"><img src="https://img.shields.io/badge/Chat-Discord-blue.svg" alt="Discord"/></a>
 # OpenHMD-Chat
 OpenHMD-Chat is a Social VR experement. It's crossplatform, open source, and written on Rust.
