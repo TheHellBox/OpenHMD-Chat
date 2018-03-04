@@ -4,6 +4,7 @@ use render;
 
 use bytevec::ByteDecodable;
 use std::collections::HashMap;
+use std::sync::mpsc;
 
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
@@ -25,7 +26,7 @@ impl Network {
     pub fn connect(&mut self, addr: &'static str){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
-    pub fn check(&mut self, players: &mut HashMap<u32, player::Player>, rendata: &mut render::RenderData) {
+    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>) {
         while let Ok(event) = self.client.receive() {
             match event {
                 ClientEvent::Message(message) => {
@@ -34,14 +35,7 @@ impl Network {
                         1 => println!("{:?}", &message[1..message.len()]),
                         2 => {
                             let player = player::Player::from_network(message[1..message.len()].to_vec());
-                            let new_player = render::RenderObject{
-                                mesh_name: "./assets/models/monkey.obj".to_string(),
-                                tex_name: "none".to_string(),
-                                position: player.position,
-                                rotation: player.rotation
-                            };
-                            rendata.render_obj_buf.insert(player.id, new_player);
-                            players.insert(player.id, player);
+                            tx.send(player);
                         },
                         _ => {}
                     }

@@ -25,8 +25,9 @@ fn main(){
     use std::collections::HashMap;
     use std::time::SystemTime;
     use std::thread;
+    use std::sync::mpsc::channel;
+    use std::sync::mpsc::sync_channel;
     use std::sync::mpsc;
-    use std::ffi::CStr;
 
     println!("Hello world!");
     //Some other stuff...
@@ -41,15 +42,41 @@ fn main(){
             0
         }
     };
+
+    let (tx_player, rx_player) = channel::<player::Player>();
+    let (tx_orient, rx_orient) = channel::<(f32,f32,f32)>();
     {
         //Create communication channel
-        let (tx, rx): (mpsc::Sender<u32>, mpsc::Receiver<u32>) = mpsc::channel();
-        let mut client = network::Network::new();
-        println!("Connecting to server...");
-        //Conecting to server
-        client.connect("127.0.0.1:4587");
-        client.check(&mut playerlist, &mut render_data);
-        println!("Done!");
+        thread::spawn(move || {
+            let mut client = network::Network::new();
+            println!("Connecting to server...");
+            //Conecting to server
+            client.connect("127.0.0.1:4587");
+            println!("Done!");
+            //Spawning player. FIXME: Apply position to local
+            let posx = rand::thread_rng().gen_range(-2.0, 2.0) ;
+            let posy = rand::thread_rng().gen_range(-2.0, 2.0);
+            let posz = 0.0;
+            let mut player = player::Player{
+                id: 0,
+                position: (posx, posz, posy),
+                rotation: (0.0, 0.0, 0.0),
+                model: "./assets/monkey.obj".to_string(),
+                name: "None".to_string()
+            };
+            client.send(player.to_network(), 2);
+            //client.send(player.to_network(), 2);
+            loop{
+                let data = rx_orient.try_iter().last();
+                if !data.is_none() {
+                    let data = data.unwrap();
+                    println!("{:?}", data);
+                    player.rotation = data;
+                }
+                client.check(&tx_player);
+                client.send(player.to_network(), 2);
+            }
+        });
     }
     //Init OpenHMD
     println!("VR mode");
@@ -107,38 +134,34 @@ fn main(){
     println!("Building program...");
 
     let program = glium::Program::from_source(&display.display, &render::shader_distortion_vert, &render::shader_distortion_frag, None).unwrap();
-    //Spawning player. FIXME: Apply position to local
-    let posx = rand::thread_rng().gen_range(-0.1, 0.1) ;
-    let posy = rand::thread_rng().gen_range(-0.1, 0.1);
-    let posz = 0.0;
-
-    let mut player = player::Player{
-        id: 0,
-        position: (posx, posy, posz),
-        rotation: (0.0, 0.0, 0.0),
-        model: "./assets/monkey.obj".to_string(),
-        name: "None".to_string()
-    };
 
     println!("Done!");
 
     //Starting main loop
     loop{
         let sys_time = SystemTime::now();
+        let data = rx_player.try_iter().last();
+        if !data.is_none() {
+            let data = data.unwrap();
+            let (x,y,z) = data.rotation;
+            let mut new_player = render::RenderObject{
+                mesh_name: "./assets/models/monkey.obj".to_string(),
+                tex_name: "none".to_string(),
+                position: data.position,
+                rotation: (x,y,z + 3.14)
+            };
+            render_data.render_obj_buf.insert(data.id, new_player);
+            playerlist.insert(data.id, data);
+        }
         ohmd_context.update();
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
         let (x,y,z) = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[3], ohmd_orient[2], ohmd_orient[1])).to_euler_angles();
-        player.rotation = (x,y,z);
-        //Network
-        //FIXME: Need multithread support for network
-        client.send(player.to_network(), 2);
-        println!("{:?}", &playerlist);
-        client.check(&mut playerlist, &mut render_data);
+
+        tx_orient.send((x,y,z));
         //Render
         display.draw(&render_data, &program, &eyes, &ohmd_device, (scrw, scrh));
         let elapsed = sys_time.elapsed().unwrap();
-        println!("Elapsed: {} ms",
-          (elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64);
-
+        let fps = 1000 / ((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64 + 1);
+        //println!("FPS: {}", fps);
     }
 }

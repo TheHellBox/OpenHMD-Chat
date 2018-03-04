@@ -10,6 +10,7 @@ pub struct Draw_Display{
 impl Draw_Display{
     pub fn draw(&self, buf: &render::RenderData, prog: &Program, eyes: &render::camera::Eyes, device: &openhmd_rs::Device, scr: (u32,u32)){
         use glium::Surface;
+        use nalgebra::geometry::UnitQuaternion;
         let mut target = self.display.draw();
 
         let (scrw, scrh) = scr;
@@ -72,15 +73,18 @@ impl Draw_Display{
         ];
 
         for (id, object) in &buf.render_obj_buf {
+            let (rotx, roty, rotz) = object.rotation;
             let (x, y, z) = object.position;
+            let rotmatrix = UnitQuaternion::from_euler_angles(rotx, roty, rotz).to_rotation_matrix().unwrap();
+            //println!("{:?}", rotmatrix);
             let matrix = [
-                [0.1, 0.0, 0.0, 0.0],
-                [0.0, 0.1, 0.0, 0.0],
-                [0.0, 0.0, 0.1, 0.0],
+                [0.1 + rotmatrix[0], 0.0 + rotmatrix[1], 0.0 + rotmatrix[2], 0.0],
+                [0.0 + rotmatrix[3], 0.1 + rotmatrix[4], 0.0 + rotmatrix[5], 0.0],
+                [0.0 + rotmatrix[6], 0.0 + rotmatrix[7], 0.1 + rotmatrix[8], 0.0],
                 [ x , y, z, 1.0f32],
             ];
             let mesh = buf.mesh_buf.get(&object.mesh_name).unwrap();
-            println!("{}", &object.mesh_name);
+            //println!("{}", &object.mesh_name);
             target.draw(
                 &mesh.mesh,
                 &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
