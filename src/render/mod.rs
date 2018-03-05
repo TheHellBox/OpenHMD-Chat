@@ -2,7 +2,6 @@ pub mod window;
 pub mod draw_display;
 pub mod camera;
 
-use glium::{Display};
 use glium::vertex::VertexBufferAny;
 use std::collections::HashMap;
 #[derive(Copy, Clone)]

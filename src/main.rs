@@ -26,7 +26,6 @@ fn main(){
     use std::time::SystemTime;
     use std::thread;
     use std::sync::mpsc::channel;
-    use std::sync::mpsc::sync_channel;
     use std::sync::mpsc;
 
     println!("Hello world!");
@@ -42,35 +41,35 @@ fn main(){
             0
         }
     };
-
+    let posx = rand::thread_rng().gen_range(-10.0, 10.0) ;
+    let posy = rand::thread_rng().gen_range(-10.0, 10.0);
+    let posz = 0.0;
+    //Create communication channels
     let (tx_player, rx_player) = channel::<player::Player>();
     let (tx_orient, rx_orient) = channel::<(f32,f32,f32)>();
     {
-        //Create communication channel
+        let posx = posx.clone();
+        let posy = posy.clone();
+        let posz = posz.clone();
         thread::spawn(move || {
             let mut client = network::Network::new();
             println!("Connecting to server...");
             //Conecting to server
             client.connect("127.0.0.1:4587");
             println!("Done!");
-            //Spawning player. FIXME: Apply position to local
-            let posx = rand::thread_rng().gen_range(-2.0, 2.0) ;
-            let posy = rand::thread_rng().gen_range(-2.0, 2.0);
-            let posz = 0.0;
+            //Spawning player.
             let mut player = player::Player{
                 id: 0,
-                position: (posx, posz, posy),
+                position: (posx, posy, posz),
                 rotation: (0.0, 0.0, 0.0),
                 model: "./assets/monkey.obj".to_string(),
                 name: "None".to_string()
             };
             client.send(player.to_network(), 2);
-            //client.send(player.to_network(), 2);
             loop{
                 let data = rx_orient.try_iter().last();
                 if !data.is_none() {
                     let data = data.unwrap();
-                    println!("{:?}", data);
                     player.rotation = data;
                 }
                 client.check(&tx_player);
@@ -117,8 +116,7 @@ fn main(){
     let mut render_obj_buffer: HashMap<u32, render::RenderObject> = HashMap::with_capacity(1024);
 
     let mut camera = render::camera::Camera::new();
-
-    let mut eyes = render::camera::Eyes::new();
+    camera.set_pos(nalgebra::Vector3::new(posx,posy,posz));
     //Creating buffers and other stuff
     let mut render_data = render::RenderData{
         mesh_buf: mesh_buffer,
@@ -136,10 +134,11 @@ fn main(){
     let program = glium::Program::from_source(&display.display, &render::shader_distortion_vert, &render::shader_distortion_frag, None).unwrap();
 
     println!("Done!");
-
     //Starting main loop
     loop{
         let sys_time = SystemTime::now();
+
+
         let data = rx_player.try_iter().last();
         if !data.is_none() {
             let data = data.unwrap();
@@ -159,7 +158,9 @@ fn main(){
 
         tx_orient.send((x,y,z));
         //Render
-        display.draw(&render_data, &program, &eyes, &ohmd_device, (scrw, scrh));
+        display.draw(&render_data, &program, &ohmd_device, &camera, (scrw, scrh));
+
+
         let elapsed = sys_time.elapsed().unwrap();
         let fps = 1000 / ((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64 + 1);
         //println!("FPS: {}", fps);

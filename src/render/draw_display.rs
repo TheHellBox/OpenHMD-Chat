@@ -1,4 +1,4 @@
-use glium::{glutin, Display, Program};
+use glium::{Display, Program};
 use render;
 use glium;
 use openhmd_rs;
@@ -8,7 +8,7 @@ pub struct Draw_Display{
 }
 
 impl Draw_Display{
-    pub fn draw(&self, buf: &render::RenderData, prog: &Program, eyes: &render::camera::Eyes, device: &openhmd_rs::Device, scr: (u32,u32)){
+    pub fn draw(&self, buf: &render::RenderData, prog: &Program, device: &openhmd_rs::Device,camera: &render::camera::Camera, scr: (u32,u32)){
         use glium::Surface;
         use nalgebra::geometry::UnitQuaternion;
         let mut target = self.display.draw();
@@ -38,12 +38,13 @@ impl Draw_Display{
             .. Default::default()
         };
 
+
         let omodelv1 = device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX);
         let omodelv1 = [
             [omodelv1[0], omodelv1[1], omodelv1[2], omodelv1[3]],
             [omodelv1[4], omodelv1[5], omodelv1[6], omodelv1[7]],
             [omodelv1[8], omodelv1[9], omodelv1[10], omodelv1[11]],
-            [0.0, 0.0, 0.0, 1.0],
+            [camera.view.vector[0], camera.view.vector[1], camera.view.vector[2], 1.0],
         ];
         let omodelv2 = device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX);
 
@@ -51,11 +52,8 @@ impl Draw_Display{
             [omodelv2[0], omodelv2[1], omodelv2[2], omodelv2[3]],
             [omodelv2[4], omodelv2[5], omodelv2[6], omodelv2[7]],
             [omodelv2[8], omodelv2[9], omodelv2[10], omodelv2[11]],
-            [0.0, 0.0, 0.0, 1.0],
+            [camera.view.vector[0], camera.view.vector[1], camera.view.vector[2], 1.0],
         ];
-
-        let proj1 = eyes.cam1.persp.to_homogeneous().as_ref().to_owned();
-        let proj2 = eyes.cam2.persp.to_homogeneous().as_ref().to_owned();
 
         let oproj = device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX);
         let oproj = [

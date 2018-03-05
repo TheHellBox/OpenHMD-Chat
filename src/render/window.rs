@@ -1,4 +1,3 @@
-use glium::*;
 
 use render::draw_display::Draw_Display;
 use glium::{glutin, Display};

@@ -1,16 +1,11 @@
-use cobalt;
 use player;
-use render;
 
-use bytevec::ByteDecodable;
-use std::collections::HashMap;
 use std::sync::mpsc;
 
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
     Client, ClientEvent
 };
-use std::thread;
 
 pub struct Network {
     client: Client<UdpSocket, BinaryRateLimiter, NoopPacketModifier>
