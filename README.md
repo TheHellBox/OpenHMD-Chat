@@ -25,8 +25,6 @@ Text chat
 
 Arguments
 
-Textures
-
 Ability to move around
 
 Gamepad support
