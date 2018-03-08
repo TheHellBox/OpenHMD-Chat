@@ -3,6 +3,7 @@ pub mod draw_display;
 pub mod camera;
 
 use glium::vertex::VertexBufferAny;
+use glium::Texture2d;
 use std::collections::HashMap;
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -26,6 +27,7 @@ pub struct RenderObject{
 
 pub struct RenderData{
     pub mesh_buf: HashMap<String, Mesh>,
+    pub texture_buf: HashMap<String, Texture2d>,
     pub render_obj_buf: HashMap<u32, RenderObject>,
 }
 
@@ -33,14 +35,15 @@ pub const shader_distortion_frag: &'static str = r#"
 #version 140
 
 in vec3 v_normal;
+in vec2 v_tex_coords;
 out vec4 color;
 uniform vec3 u_light;
-
+uniform sampler2D tex;
 void main() {
     float brightness = dot(normalize(v_normal), normalize(u_light));
     vec3 dark_color = vec3(0.3, 0.3, 0.3);
     vec3 regular_color = vec3(0.8, 0.8, 0.8);
-    color = vec4(mix(dark_color, regular_color, brightness), 1.0);
+    color = texture(tex, v_tex_coords);
 }
 "#;
 
@@ -60,5 +63,6 @@ void main() {
     mat4 modelview = view * matrix;
     v_normal = transpose(inverse(mat3(modelview))) * normal;
     gl_Position = perspective * modelview * vec4(position, 1.0);
+    v_tex_coords = tex_coords;
 }
 "#;

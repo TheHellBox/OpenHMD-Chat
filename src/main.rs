@@ -28,7 +28,6 @@ fn main(){
     use std::sync::mpsc::channel;
     use std::sync::mpsc;
 
-    println!("Hello world!");
     //Some other stuff...
     let args: Vec<_> = env::args().collect();
     let mut scrw: u32 = 1024;
@@ -41,6 +40,7 @@ fn main(){
             0
         }
     };
+    //Generating random player position
     let posx = rand::thread_rng().gen_range(-10.0, 10.0) ;
     let posy = rand::thread_rng().gen_range(-10.0, 10.0);
     let posz = 0.0;
@@ -112,7 +112,11 @@ fn main(){
 
     println!("Done!");
     //Loading some assets
+    println!("");
     let mesh_buffer = support::obj_model_loader::gen_buffer(&display.display);
+    println!("");
+    let texture_buffer = support::texture_loader::gen_texture_buffer(&display.display);
+    println!("");
     let mut render_obj_buffer: HashMap<u32, render::RenderObject> = HashMap::with_capacity(1024);
 
     let mut camera = render::camera::Camera::new();
@@ -120,15 +124,16 @@ fn main(){
     //Creating buffers and other stuff
     let mut render_data = render::RenderData{
         mesh_buf: mesh_buffer,
+        texture_buf: texture_buffer,
         render_obj_buf: render_obj_buffer,
     };
-    let test_object = render::RenderObject{
+    let scene = render::RenderObject{
         mesh_name: "./assets/models/scene.obj".to_string(),
-        tex_name: "none".to_string(),
+        tex_name: "./assets/textures/test.png".to_string(),
         position: (0.0,0.0,0.0),
         rotation: (0.0, 0.0, 0.0)
     };
-    render_data.render_obj_buf.insert(1, test_object);
+    render_data.render_obj_buf.insert(1, scene);
     println!("Building program...");
 
     let program = glium::Program::from_source(&display.display, &render::shader_distortion_vert, &render::shader_distortion_frag, None).unwrap();
@@ -145,7 +150,7 @@ fn main(){
             let (x,y,z) = data.rotation;
             let mut new_player = render::RenderObject{
                 mesh_name: "./assets/models/monkey.obj".to_string(),
-                tex_name: "none".to_string(),
+                tex_name: "./assets/textures/test.png".to_string(),
                 position: data.position,
                 rotation: (x,y,z + 3.14)
             };
@@ -154,6 +159,11 @@ fn main(){
         }
         ohmd_context.update();
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
+        let mut ohmd_pos = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR);
+        ohmd_pos[0] += posx;
+        ohmd_pos[1] += posy;
+        ohmd_pos[2] += posz;
+        //ohmd_device.setf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR, ohmd_pos)
         let (x,y,z) = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[3], ohmd_orient[2], ohmd_orient[1])).to_euler_angles();
 
         tx_orient.send((x,y,z));

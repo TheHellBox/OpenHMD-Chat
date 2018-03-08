@@ -38,37 +38,11 @@ impl Draw_Display{
             .. Default::default()
         };
 
-
-        let omodelv1 = device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX);
-        let omodelv1 = [
-            [omodelv1[0], omodelv1[1], omodelv1[2], omodelv1[3]],
-            [omodelv1[4], omodelv1[5], omodelv1[6], omodelv1[7]],
-            [omodelv1[8], omodelv1[9], omodelv1[10], omodelv1[11]],
-            [camera.view.vector[0], camera.view.vector[1], camera.view.vector[2], 1.0],
-        ];
-        let omodelv2 = device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX);
-
-        let omodelv2 = [
-            [omodelv2[0], omodelv2[1], omodelv2[2], omodelv2[3]],
-            [omodelv2[4], omodelv2[5], omodelv2[6], omodelv2[7]],
-            [omodelv2[8], omodelv2[9], omodelv2[10], omodelv2[11]],
-            [camera.view.vector[0], camera.view.vector[1], camera.view.vector[2], 1.0],
-        ];
-
-        let oproj = device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX);
-        let oproj = [
-            [oproj[0], oproj[1], oproj[2], oproj[3]],
-            [oproj[4], oproj[5], oproj[6], oproj[7]],
-            [oproj[8], oproj[9], oproj[10], oproj[11]],
-            [oproj[12], oproj[13], oproj[14], oproj[15]],
-        ];
-        let oproj2 = device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX);
-        let oproj2 = [
-            [oproj2[0], oproj2[1], oproj2[2], oproj2[3]],
-            [oproj2[4], oproj2[5], oproj2[6], oproj2[7]],
-            [oproj2[8], oproj2[9], oproj2[10], oproj2[11]],
-            [oproj2[12], oproj2[13], oproj2[14], oproj2[15]],
-        ];
+        let view = camera.view;
+        let mut omodelv1 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX));
+        let mut omodelv2 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX));
+        let oproj = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX));
+        let oproj2 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX));
 
         for (id, object) in &buf.render_obj_buf {
             let (rotx, roty, rotz) = object.rotation;
@@ -82,12 +56,13 @@ impl Draw_Display{
                 [ x , y, z, 1.0f32],
             ];
             let mesh = buf.mesh_buf.get(&object.mesh_name).unwrap();
+            let tex = buf.texture_buf.get(&object.tex_name).unwrap();
             //println!("{}", &object.mesh_name);
             target.draw(
                 &mesh.mesh,
                 &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                 prog,
-                &uniform! { matrix: matrix, perspective: oproj, view: omodelv1 },
+                &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex },
                 &params
             ).unwrap();
             target.draw(
@@ -100,4 +75,24 @@ impl Draw_Display{
         }
         target.finish().unwrap();
     }
+}
+
+fn m16_to_4x4(mat: [f32; 16]) -> [[f32;4]; 4]{
+    let mat = [
+        [mat[0], mat[1], mat[2], mat[3]],
+        [mat[4], mat[5], mat[6], mat[7]],
+        [mat[8], mat[9], mat[10], mat[11]],
+        [mat[12], mat[13], mat[14], mat[15]],
+    ];
+    mat
+}
+
+fn add_matrix(mat1: [[f32;4]; 4], mat2: [[f32;4]; 4])  -> [[f32;4]; 4]{
+    let mat = [
+        [mat1[0][0] + mat2[0][0], mat1[0][1] + mat2[0][1], mat1[0][2] + mat2[0][2], mat1[0][3] + mat2[0][3]],
+        [mat1[1][0] + mat2[1][0], mat1[1][1] + mat2[1][1], mat1[1][2] + mat2[1][2], mat1[1][3] + mat2[1][3]],
+        [mat1[2][0] + mat2[2][0], mat1[2][1] + mat2[2][1], mat1[2][2] + mat2[2][2], mat1[2][3] + mat2[2][3]],
+        [mat1[3][0] + mat2[3][0], mat1[3][1] + mat2[3][1], mat1[3][2] + mat2[3][2], mat1[3][3] + mat2[3][3]],
+    ];
+    mat
 }
