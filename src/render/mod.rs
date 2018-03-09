@@ -22,7 +22,7 @@ pub struct RenderObject{
     pub mesh_name: String,
     pub tex_name: String,
     pub position: (f32, f32, f32),
-    pub rotation: (f32, f32, f32)
+    pub rotation: (f32, f32, f32, f32)
 }
 
 pub struct RenderData{

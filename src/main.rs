@@ -8,6 +8,7 @@ pub extern crate openhmd_rs;
 pub extern crate nalgebra;
 pub extern crate cobalt;
 pub extern crate rand;
+pub extern crate gilrs;
 
 mod render;
 mod support;
@@ -27,6 +28,7 @@ fn main(){
     use std::thread;
     use std::sync::mpsc::channel;
     use std::sync::mpsc;
+    use gilrs::{Gilrs, Button, Event, EventType};
 
     //Some other stuff...
     let args: Vec<_> = env::args().collect();
@@ -41,24 +43,24 @@ fn main(){
         }
     };
     //Generating random player position
-    let posx = rand::thread_rng().gen_range(-10.0, 10.0) ;
-    let posy = rand::thread_rng().gen_range(-10.0, 10.0);
-    let posz = 0.0;
+    let mut posx = rand::thread_rng().gen_range(-10.0, 10.0);
+    let mut posy = 0.0;
+    let mut posz = rand::thread_rng().gen_range(-10.0, 10.0);
     //Create communication channels
     let (tx_player, rx_player) = channel::<player::Player>();
-    let (tx_orient, rx_orient) = channel::<((f32,f32,f32), (f32,f32,f32))>();
+    let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
     {
         thread::spawn(move || {
             let mut client = network::Network::new();
             println!("Connecting to server...");
             //Conecting to server
             client.connect("127.0.0.1:4587");
-            println!("Done!");
+            println!("Connected!");
             //Spawning player.
             let mut player = player::Player{
                 id: 0,
                 position: (0.0, 0.0, 0.0),
-                rotation: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0, 0.0),
                 model: "./assets/monkey.obj".to_string(),
                 name: "None".to_string()
             };
@@ -85,14 +87,10 @@ fn main(){
 
     ohmd_context.update();
 
-    println!("");
-
-    println!("Device description: ");
+    println!("\nDevice description: ");
     println!("Vendor:   {}", ohmd_context.list_gets(0, openhmd_rs::ohmd_string_value::OHMD_VENDOR));
     println!("Product:  {}", ohmd_context.list_gets(0, openhmd_rs::ohmd_string_value::OHMD_PRODUCT));
-    println!("Path:     {}", ohmd_context.list_gets(0, openhmd_rs::ohmd_string_value::OHMD_PATH));
-
-    println!("");
+    println!("Path:     {}\n", ohmd_context.list_gets(0, openhmd_rs::ohmd_string_value::OHMD_PATH));
 
     scrw = ohmd_device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_HORIZONTAL_RESOLUTION) as u32;
     scrh = ohmd_device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_VERTICAL_RESOLUTION) as u32;
@@ -105,9 +103,7 @@ fn main(){
     println!("Opening window...");
     let mut window = Window::new(scrw,scrh,"test");
 
-    let (display, events_loop) = {
-        window.get_display()
-    };
+    let (display, events_loop) = window.get_display();
 
     println!("Done!");
     //Loading some assets
@@ -128,42 +124,56 @@ fn main(){
     };
     let scene = render::RenderObject{
         mesh_name: "./assets/models/scene.obj".to_string(),
-        tex_name: "./assets/textures/test.png".to_string(),
+        tex_name: "./assets/textures/background.png".to_string(),
         position: (0.0,0.0,0.0),
-        rotation: (0.0, 0.0, 0.0)
+        rotation: (0.0, 0.0, 1.0, 0.0)
     };
     render_data.render_obj_buf.insert(1, scene);
+
     println!("Building program...");
-
     let program = glium::Program::from_source(&display.display, &render::shader_distortion_vert, &render::shader_distortion_frag, None).unwrap();
-
     println!("Done!");
+
+    let mut gilrs = Gilrs::new().unwrap();
     //Starting main loop
     loop{
         let sys_time = SystemTime::now();
         let data = rx_player.try_iter().last();
         if data.is_some() {
             let data = data.unwrap();
-            let (x,y,z) = data.rotation;
+            let (x,y,z,w) = data.rotation;
             let mut new_player = render::RenderObject{
                 mesh_name: "./assets/models/monkey.obj".to_string(),
                 tex_name: "./assets/textures/test.png".to_string(),
                 position: data.position,
-                rotation: (x,y,z + 3.14)
+                rotation: (x,y,z,w)
             };
             render_data.render_obj_buf.insert(data.id, new_player);
             playerlist.insert(data.id, data);
         }
         ohmd_context.update();
+
+        if args.len() == 1 {
+            while let Some(event) = gilrs.next_event() {
+                match event {
+                    Event { id, event: EventType::AxisChanged(gilrs::ev::Axis::LeftStickY, val1, val2), .. } => {
+                        posx += val1 / 5.0;
+                    }
+                    Event { id, event: EventType::AxisChanged(gilrs::ev::Axis::LeftStickX, val1, val2), .. } => {
+                        posz += val1 / 5.0;
+                    }
+                    _ => (),
+                };
+            }
+        }
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
         camera.set_pos(nalgebra::Vector3::new(posx,posy,posz));
         //ohmd_device.setf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR, ohmd_pos)
-        let (x,y,z) = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[3], ohmd_orient[2], ohmd_orient[1])).to_euler_angles();
+        let quat = UnitQuaternion::from_quaternion(Quaternion::new(ohmd_orient[0], -ohmd_orient[1], ohmd_orient[2], -ohmd_orient[3]));
 
-        tx_orient.send(((x,y,z), (posx,posy,posz)));
+        tx_orient.send(((quat[0],quat[1],quat[2],quat[3]), (posx,posy,posz)));
         //Render
         display.draw(&render_data, &program, &ohmd_device, &camera, (scrw, scrh));
-
 
         let elapsed = sys_time.elapsed().unwrap();
         let fps = 1000 / ((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64 + 1);

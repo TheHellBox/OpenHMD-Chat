@@ -11,7 +11,8 @@ pub struct Draw_Display{
 impl Draw_Display{
     pub fn draw(&self, buf: &render::RenderData, prog: &Program, device: &openhmd_rs::Device,camera: &render::camera::Camera, scr: (u32,u32)){
         use glium::Surface;
-        use nalgebra::geometry::UnitQuaternion;
+        use nalgebra::geometry::{UnitQuaternion, Quaternion};
+        use nalgebra::core::Vector4;
         let mut target = self.display.draw();
 
         let (scrw, scrh) = scr;
@@ -50,9 +51,9 @@ impl Draw_Display{
         let oproj2 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX));
 
         for (id, object) in &buf.render_obj_buf {
-            let (rotx, roty, rotz) = object.rotation;
+            let (rotx, roty, rotz, rotw) = object.rotation;
             let (x, y, z) = object.position;
-            let rotmatrix = UnitQuaternion::from_euler_angles(rotx, roty, rotz).to_rotation_matrix().unwrap();
+            let rotmatrix = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_rotation_matrix().unwrap();
             //println!("{:?}", rotmatrix);
             let matrix = [
                 [0.1 + rotmatrix[0], 0.0 + rotmatrix[1], 0.0 + rotmatrix[2], 0.0],
