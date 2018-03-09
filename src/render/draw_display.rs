@@ -60,8 +60,17 @@ impl Draw_Display{
                 [0.0 + rotmatrix[6], 0.0 + rotmatrix[7], 0.1 + rotmatrix[8], 0.0],
                 [ x , y, z, 1.0f32],
             ];
-            let mesh = buf.mesh_buf.get(&object.mesh_name).unwrap();
-            let tex = buf.texture_buf.get(&object.tex_name).unwrap();
+
+            let mesh = match buf.mesh_buf.get(&object.mesh_name) {
+                Some(x) => x,
+                None => { buf.mesh_buf.get("./assets/models/monkey.obj").unwrap() },
+                _ => { buf.mesh_buf.get("./assets/models/monkey.obj").unwrap() }
+            };
+            let tex = match buf.texture_buf.get(&object.tex_name) {
+                Some(x) => x,
+                None => { buf.texture_buf.get("./assets/textures/test.png").unwrap() },
+                _ => { buf.texture_buf.get("./assets/textures/test.png").unwrap() }
+            };
             //println!("{}", &object.mesh_name);
             target.draw(
                 &mesh.mesh,

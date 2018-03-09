@@ -65,7 +65,7 @@ fn main(){
             client.send(player.to_network(), 2);
             loop{
                 let data = rx_orient.try_iter().last();
-                if !data.is_none() {
+                if data.is_some() {
                     let data = data.unwrap();
                     let (rot, pos) = data;
                     player.rotation = rot;
@@ -142,7 +142,7 @@ fn main(){
     loop{
         let sys_time = SystemTime::now();
         let data = rx_player.try_iter().last();
-        if !data.is_none() {
+        if data.is_some() {
             let data = data.unwrap();
             let (x,y,z) = data.rotation;
             let mut new_player = render::RenderObject{
