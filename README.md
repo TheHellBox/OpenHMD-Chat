@@ -17,20 +17,20 @@ I think it best programming language for games, it easy to use and fast
 Still no, you must compile it
 
 # TO DO
-Voice communication
+Voice communication (10%)
 
-GUI
+GUI (0%)
 
-Text chat
+Text chat (0%)
 
-Arguments
+Arguments (0%)
 
-Ability to move around
+Ability to move around (40%)
 
-Gamepad support
+Gamepad support (30%)
 
-Ability to create worlds
+Ability to create worlds(5%)
 
-Animations
+Animations(0%)
 
-Controllers support
+VR Controllers support(0%)
