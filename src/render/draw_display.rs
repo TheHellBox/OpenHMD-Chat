@@ -2,6 +2,7 @@ use glium::{Display, Program};
 use render;
 use glium;
 use openhmd_rs;
+use nalgebra;
 
 pub struct Draw_Display{
     pub display: Display
@@ -38,9 +39,13 @@ impl Draw_Display{
             .. Default::default()
         };
 
-        let view = camera.view;
-        let mut omodelv1 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX));
-        let mut omodelv2 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX));
+        let mut view = camera.view.to_homogeneous();
+        let omodelv1 = mat_to_nalg(m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX)));
+        let omodelv1 = nalg_to_4x4((omodelv1* view));
+
+        let omodelv2 = mat_to_nalg(m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX)));
+        let omodelv2 = nalg_to_4x4((omodelv2 * view));
+
         let oproj = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX));
         let oproj2 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX));
 
@@ -87,6 +92,25 @@ fn m16_to_4x4(mat: [f32; 16]) -> [[f32;4]; 4]{
     mat
 }
 
+fn nalg_to_4x4(mat: nalgebra::core::MatrixN<f32, nalgebra::core::dimension::U4>) -> [[f32;4]; 4]{
+    let mat = [
+        [mat[0], mat[1], mat[2], mat[3]],
+        [mat[4], mat[5], mat[6], mat[7]],
+        [mat[8], mat[9], mat[10], mat[11]],
+        [mat[12], mat[13], mat[14], mat[15]],
+    ];
+    mat
+}
+
+fn mat_to_nalg(mat: [[f32;4]; 4]) -> nalgebra::core::MatrixN<f32, nalgebra::core::dimension::U4>{
+    let mut raw: nalgebra::core::MatrixN<f32, nalgebra::core::dimension::U4> = nalgebra::core::MatrixN::new_scaling(0.0);
+    for x in 0..4{
+        for y in 0..4{
+            raw[y*4 + x] = mat[y][x];
+        }
+    }
+    raw
+}
 fn add_matrix(mat1: [[f32;4]; 4], mat2: [[f32;4]; 4])  -> [[f32;4]; 4]{
     let mat = [
         [mat1[0][0] + mat2[0][0], mat1[0][1] + mat2[0][1], mat1[0][2] + mat2[0][2], mat1[0][3] + mat2[0][3]],

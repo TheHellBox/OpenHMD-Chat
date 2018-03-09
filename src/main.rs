@@ -46,11 +46,8 @@ fn main(){
     let posz = 0.0;
     //Create communication channels
     let (tx_player, rx_player) = channel::<player::Player>();
-    let (tx_orient, rx_orient) = channel::<(f32,f32,f32)>();
+    let (tx_orient, rx_orient) = channel::<((f32,f32,f32), (f32,f32,f32))>();
     {
-        let posx = posx.clone();
-        let posy = posy.clone();
-        let posz = posz.clone();
         thread::spawn(move || {
             let mut client = network::Network::new();
             println!("Connecting to server...");
@@ -60,7 +57,7 @@ fn main(){
             //Spawning player.
             let mut player = player::Player{
                 id: 0,
-                position: (posx, posy, posz),
+                position: (0.0, 0.0, 0.0),
                 rotation: (0.0, 0.0, 0.0),
                 model: "./assets/monkey.obj".to_string(),
                 name: "None".to_string()
@@ -70,7 +67,9 @@ fn main(){
                 let data = rx_orient.try_iter().last();
                 if !data.is_none() {
                     let data = data.unwrap();
-                    player.rotation = data;
+                    let (rot, pos) = data;
+                    player.rotation = rot;
+                    player.position = pos;
                 }
                 client.check(&tx_player);
                 client.send(player.to_network(), 2);
@@ -142,8 +141,6 @@ fn main(){
     //Starting main loop
     loop{
         let sys_time = SystemTime::now();
-
-
         let data = rx_player.try_iter().last();
         if !data.is_none() {
             let data = data.unwrap();
@@ -159,14 +156,11 @@ fn main(){
         }
         ohmd_context.update();
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
-        let mut ohmd_pos = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR);
-        ohmd_pos[0] += posx;
-        ohmd_pos[1] += posy;
-        ohmd_pos[2] += posz;
+        camera.set_pos(nalgebra::Vector3::new(posx,posy,posz));
         //ohmd_device.setf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR, ohmd_pos)
         let (x,y,z) = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[3], ohmd_orient[2], ohmd_orient[1])).to_euler_angles();
 
-        tx_orient.send((x,y,z));
+        tx_orient.send(((x,y,z), (posx,posy,posz)));
         //Render
         display.draw(&render_data, &program, &ohmd_device, &camera, (scrw, scrh));
 
