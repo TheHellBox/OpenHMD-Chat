@@ -21,7 +21,7 @@ impl Network {
     pub fn connect(&mut self, addr: &'static str){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
-    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>) {
+    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, txsound: &mpsc::Sender<Vec<u8>>) {
         while let Ok(event) = self.client.receive() {
             match event {
                 ClientEvent::Message(message) => {
@@ -31,6 +31,9 @@ impl Network {
                         2 => {
                             let player = player::Player::from_network(message[1..message.len()].to_vec());
                             tx.send(player);
+                        },
+                        3 => {
+                            txsound.send(message[1..message.len()].to_vec());
                         },
                         _ => {}
                     }

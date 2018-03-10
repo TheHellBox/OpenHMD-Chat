@@ -9,11 +9,14 @@ pub extern crate nalgebra;
 pub extern crate cobalt;
 pub extern crate rand;
 pub extern crate gilrs;
+pub extern crate alto;
+pub extern crate opus;
 
 mod render;
 mod support;
 mod network;
 mod player;
+mod audio;
 
 use render::window::Window;
 
@@ -29,6 +32,7 @@ fn main(){
     use std::sync::mpsc::channel;
     use std::sync::mpsc;
     use gilrs::{Gilrs, Button, Event, EventType};
+
 
     //Some other stuff...
     let args: Vec<_> = env::args().collect();
@@ -49,6 +53,8 @@ fn main(){
     //Create communication channels
     let (tx_player, rx_player) = channel::<player::Player>();
     let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
+    let (tx_netsound_in, rx_netsound_in) = channel::<(Vec<u8>)>();
+    let (tx_netsound_out, rx_netsound_out) = channel::<(Vec<u8>)>();
     {
         thread::spawn(move || {
             let mut client = network::Network::new();
@@ -66,14 +72,18 @@ fn main(){
             };
             client.send(player.to_network(), 2);
             loop{
-                let data = rx_orient.try_iter().last();
-                if data.is_some() {
-                    let data = data.unwrap();
+                let data = rx_orient.try_iter();
+                for data in data{
                     let (rot, pos) = data;
                     player.rotation = rot;
                     player.position = pos;
                 }
-                client.check(&tx_player);
+                let netsound = rx_netsound_in.try_iter();
+                for x in netsound{
+                    let netsound = x;
+                    client.send(netsound, 3);
+                }
+                client.check(&tx_player, &tx_netsound_out);
                 client.send(player.to_network(), 2);
             }
         });
@@ -133,14 +143,18 @@ fn main(){
     println!("Building program...");
     let program = glium::Program::from_source(&display.display, &render::shader_distortion_vert, &render::shader_distortion_frag, None).unwrap();
     println!("Done!");
-
+    //gamepad stuff
     let mut gilrs = Gilrs::new().unwrap();
+
+    // Audio stuff
+    thread::spawn(move || {
+        audio::start_audio(&tx_netsound_in, &rx_netsound_out);
+    });
     //Starting main loop
     loop{
         let sys_time = SystemTime::now();
-        let data = rx_player.try_iter().last();
-        if data.is_some() {
-            let data = data.unwrap();
+        let data = rx_player.try_iter();
+        for data in data{
             let (x,y,z,w) = data.rotation;
             let mut new_player = render::RenderObject{
                 mesh_name: "./assets/models/monkey.obj".to_string(),
