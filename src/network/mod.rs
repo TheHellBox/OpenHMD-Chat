@@ -18,7 +18,7 @@ impl Network {
             client: client
         }
     }
-    pub fn connect(&mut self, addr: &'static str){
+    pub fn connect(&mut self, addr: String){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
     pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, txsound: &mpsc::Sender<Vec<u8>>) {

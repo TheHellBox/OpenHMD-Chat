@@ -39,7 +39,7 @@ fn main(){
     let mut scrw: u32 = 1024;
     let mut scrh: u32 = 768;
     let hmdid = {
-        if args.len() > 1 {
+        if args.len() > 2 {
             1
         }
         else{
@@ -56,11 +56,12 @@ fn main(){
     let (tx_netsound_in, rx_netsound_in) = channel::<(Vec<u8>)>();
     let (tx_netsound_out, rx_netsound_out) = channel::<(Vec<u8>)>();
     {
+        let ip = args[1].clone();
         thread::spawn(move || {
             let mut client = network::Network::new();
             println!("Connecting to server...");
             //Conecting to server
-            client.connect("127.0.0.1:4587");
+            client.connect(ip);
             println!("Connected!");
             //Spawning player.
             let mut player = player::Player{
@@ -167,7 +168,7 @@ fn main(){
         }
         ohmd_context.update();
 
-        if args.len() == 1 {
+        if args.len() == 2 {
             while let Some(event) = gilrs.next_event() {
                 match event {
                     Event { id, event: EventType::AxisChanged(gilrs::ev::Axis::LeftStickY, val1, val2), .. } => {

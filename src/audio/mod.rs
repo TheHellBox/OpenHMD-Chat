@@ -122,7 +122,6 @@ pub fn start_audio(tx: &mpsc::Sender<(Vec<u8>)>, rx: &mpsc::Receiver<(Vec<u8>)>)
             while samples_len < buffer.len() as i32{
                 samples_len = audio_wrapper.samples_len();
             }
-            println!("Audio frame!");
             //Collecting samples
             audio_wrapper.dev_cap.capture_samples(&mut buffer).unwrap();
 
