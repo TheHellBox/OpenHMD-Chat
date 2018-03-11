@@ -17,6 +17,7 @@ mod support;
 mod network;
 mod player;
 mod audio;
+mod vr_gui;
 
 use render::window::Window;
 
@@ -159,6 +160,9 @@ fn main(){
     //gamepad stuff
     let mut gilrs = Gilrs::new().unwrap();
 
+    let mut vr_gui = vr_gui::VRGui::new();
+    let test_element = vr_gui::Element::new((0.0,0.0), (1.0,1.0), (false, "Test".to_string()), vr_gui::ElementType::Panel);
+    vr_gui.push_element(test_element);
     // Audio stuff
     thread::spawn(move || {
         audio::start_audio(&tx_netsound_in, &rx_netsound_out, &rx_players);
