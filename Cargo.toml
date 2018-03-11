@@ -1,6 +1,6 @@
 [package]
 name = "openhmd-chat"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["TheHellBox <thehellbox11@gmail.com>"]
 
 [dependencies]
