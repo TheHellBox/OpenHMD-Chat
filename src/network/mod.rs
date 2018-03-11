@@ -1,6 +1,7 @@
 use player;
 
 use std::sync::mpsc;
+use audio::AudioMsg;
 
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
@@ -21,7 +22,7 @@ impl Network {
     pub fn connect(&mut self, addr: String){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
-    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, txsound: &mpsc::Sender<Vec<u8>>) {
+    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player) {
         while let Ok(event) = self.client.receive() {
             match event {
                 ClientEvent::Message(message) => {
@@ -33,7 +34,11 @@ impl Network {
                             tx.send(player);
                         },
                         3 => {
-                            txsound.send(message[1..message.len()].to_vec());
+                            txsound.send(AudioMsg{
+                                data: message[1..message.len()].to_vec(),
+                                player_position: player.position,
+                                source_id: 0,
+                            });
                         },
                         _ => {}
                     }

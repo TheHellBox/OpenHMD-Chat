@@ -1,6 +1,6 @@
 use bytevec::ByteEncodable;
 use bytevec::ByteDecodable;
-#[derive(PartialEq, Debug, Default)]
+#[derive(PartialEq, Debug, Default, Clone)]
 pub struct Player {
     pub id: u32,
     pub position: (f32, f32, f32),

@@ -32,7 +32,7 @@ fn main(){
     use std::sync::mpsc::channel;
     use std::sync::mpsc;
     use gilrs::{Gilrs, Button, Event, EventType};
-
+    use audio::AudioMsg;
 
     //Some other stuff...
     let args: Vec<_> = env::args().collect();
@@ -52,9 +52,10 @@ fn main(){
     let mut posz = rand::thread_rng().gen_range(-10.0, 10.0);
     //Create communication channels
     let (tx_player, rx_player) = channel::<player::Player>();
+    let (tx_players, rx_players) = channel::<HashMap<u32, player::Player>>();
     let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
-    let (tx_netsound_in, rx_netsound_in) = channel::<(Vec<u8>)>();
-    let (tx_netsound_out, rx_netsound_out) = channel::<(Vec<u8>)>();
+    let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
+    let (tx_netsound_out, rx_netsound_out) = channel::<AudioMsg>();
     {
         let ip = args[1].clone();
         thread::spawn(move || {
@@ -82,9 +83,9 @@ fn main(){
                 let netsound = rx_netsound_in.try_iter();
                 for x in netsound{
                     let netsound = x;
-                    client.send(netsound, 3);
+                    client.send(netsound.data, 3);
                 }
-                client.check(&tx_player, &tx_netsound_out);
+                client.check(&tx_player, &tx_netsound_out, &player);
                 client.send(player.to_network(), 2);
             }
         });
@@ -149,7 +150,7 @@ fn main(){
 
     // Audio stuff
     thread::spawn(move || {
-        audio::start_audio(&tx_netsound_in, &rx_netsound_out);
+        audio::start_audio(&tx_netsound_in, &rx_netsound_out, &rx_players);
     });
     //Starting main loop
     loop{
@@ -192,6 +193,7 @@ fn main(){
 
         let elapsed = sys_time.elapsed().unwrap();
         let fps = 1000 / ((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64 + 1);
+        tx_players.send(playerlist.clone());
         //println!("FPS: {}", fps);
     }
 }
