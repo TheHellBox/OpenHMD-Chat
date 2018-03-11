@@ -155,7 +155,6 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                     src.set_position([posx, posy, posz]);
                 }
             }
-            println!("{}", sources.len());
             let data = rx.try_iter();
             for data in data{
                 let src = sources.get_mut(&data.source_id).unwrap();
