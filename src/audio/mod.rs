@@ -15,7 +15,8 @@ pub struct Audio_Wrapper{
     pub dev: alto::OutputDevice,
     pub dev_cap: alto::Capture<Mono<i16>>,
     pub context: alto::Context,
-    pub player_position: (f32,f32,f32)
+    pub player_position: (f32,f32,f32),
+    pub player_rotation: (f32,f32,f32)
 }
 
 pub struct Audio_Static_Source{
@@ -25,6 +26,7 @@ pub struct Audio_Static_Source{
 pub struct AudioMsg {
     pub data: Vec<u8>,
     pub player_position: (f32,f32,f32),
+    pub player_rotation: (f32,f32,f32),
     pub source_id: u32
 }
 
@@ -60,7 +62,8 @@ impl Audio_Wrapper{
             dev: dev,
             dev_cap: dev_cap,
             context: ctx,
-            player_position: (0.0, 0.0, 0.0)
+            player_position: (0.0, 0.0, 0.0),
+            player_rotation: (0.0, 0.0, 0.0),
         })
     }
     pub fn create_static_source(&self) -> Result<Audio_Static_Source, &'static str>{
@@ -139,6 +142,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
             tx.send(AudioMsg{
                 data: encoded,
                 player_position: audio_wrapper.player_position,
+                player_rotation: audio_wrapper.player_rotation,
                 source_id: 0,
             });
             let playerslist = rx_players.try_iter();
@@ -154,7 +158,6 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
             println!("{}", sources.len());
             let data = rx.try_iter();
             for data in data{
-                //FIXME: Get source from data
                 let src = sources.get_mut(&data.source_id).unwrap();
                 //unqueue buffers
                 let mut buffers_avail = src.buffers_processed();
@@ -166,9 +169,11 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
 
                 audio_wrapper.player_position = data.player_position;
                 let (posx, posy, posz) = audio_wrapper.player_position;
+                let (rotx, roty, rotz) = audio_wrapper.player_rotation;
                 let data = data.data;
 
-                audio_wrapper.context.set_position([posx, posy, posz]);
+                audio_wrapper.context.set_position([-posx, -posy, -posz]);
+                audio_wrapper.context.set_orientation(([1.0,1.0,1.0], [rotx, roty, rotz])).unwrap();
 
                 let mut decode = vec![0i16; 320];
                 opus_decoder.decode(&data, &mut decode, false).unwrap();

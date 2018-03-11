@@ -83,7 +83,11 @@ fn main(){
                 let netsound = rx_netsound_in.try_iter();
                 for x in netsound{
                     let netsound = x;
-                    client.send(netsound.data, 3);
+                    let data = network::NetAudio{
+                        data: netsound.data,
+                        id: player.id
+                    };
+                    client.send(data.to_network(), 3);
                 }
                 client.check(&tx_player, &tx_netsound_out, &player);
                 client.send(player.to_network(), 2);

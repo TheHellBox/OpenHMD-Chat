@@ -1,5 +1,5 @@
 use player;
-
+use bytevec::{ByteEncodable, ByteDecodable};
 use std::sync::mpsc;
 use audio::AudioMsg;
 
@@ -10,6 +10,26 @@ use cobalt::{
 
 pub struct Network {
     client: Client<UdpSocket, BinaryRateLimiter, NoopPacketModifier>
+}
+
+#[derive(PartialEq, Debug, Default, Clone)]
+pub struct NetAudio {
+    pub data: Vec<u8>,
+    pub id: u32
+}
+bytevec_impls! {
+    impl NetAudio {
+        data: Vec<u8>,
+        id: u32
+    }
+}
+impl NetAudio {
+    pub fn to_network(&self) -> Vec<u8>{
+        self.encode::<u8>().unwrap()
+    }
+    pub fn from_network(message: Vec<u8>) -> NetAudio{
+        NetAudio::decode::<u8>(&message).unwrap()
+    }
 }
 
 impl Network {
@@ -23,6 +43,9 @@ impl Network {
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
     pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player) {
+        use nalgebra::geometry::UnitQuaternion;
+        use nalgebra::geometry::Quaternion;
+
         while let Ok(event) = self.client.receive() {
             match event {
                 ClientEvent::Message(message) => {
@@ -34,10 +57,14 @@ impl Network {
                             tx.send(player);
                         },
                         3 => {
+                            let (rotx, roty, rotz, rotw) = player.rotation;
+                            let (rotx, roty, rotz) = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_euler_angles();
+                            let mut data = NetAudio::from_network(message[1..message.len()].to_vec());
                             txsound.send(AudioMsg{
-                                data: message[1..message.len()].to_vec(),
+                                data: data.data,
                                 player_position: player.position,
-                                source_id: 0,
+                                player_rotation: (rotx, roty, rotz),
+                                source_id: data.id,
                             });
                         },
                         _ => {}
