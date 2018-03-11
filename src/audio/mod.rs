@@ -108,14 +108,15 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
     //WARNING: Very poor code
     use std::collections::{VecDeque, HashMap};
     use std::thread;
-
+    println!("Init audio_wrapper");
     let audio_wrapper = Audio_Wrapper::new();
     if audio_wrapper.is_ok(){
+        println!("Init opus");
         let mut opus_encoder = opus::Encoder::new(16000, opus::Channels::Mono, opus::Application::Voip).unwrap();
         let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
 
         let mut audio_wrapper = audio_wrapper.unwrap();
-
+        println!("Creating sources list");
         let mut sources = HashMap::new();
         let mut src = audio_wrapper.create_static_source().unwrap().source;
         sources.insert(0, src);
@@ -123,6 +124,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
         let mut buffer_queue : VecDeque<alto::Buffer> = VecDeque::<alto::Buffer>::new();
         let mut buffer: Vec<alto::Mono<i16>> = vec![alto::Mono::<i16> { center : 0 }; 320 as usize];
 
+        println!("Starting capture");
         audio_wrapper.start_capture();
 
         loop{
@@ -155,8 +157,10 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                     src.set_position([posx, posy, posz]);
                 }
             }
+            println!("Here can be a bug, rx.try_iter()");
             let data = rx.try_iter();
             for data in data{
+                println!("Hm, let's go to next");
                 let src = sources.get_mut(&data.source_id).unwrap();
                 //unqueue buffers
                 let mut buffers_avail = src.buffers_processed();
@@ -170,27 +174,29 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                 let (posx, posy, posz) = audio_wrapper.player_position;
                 let (rotx, roty, rotz) = audio_wrapper.player_rotation;
                 let data = data.data;
-
+                println!("Here?");
                 audio_wrapper.context.set_position([-posx, -posy, -posz]);
                 audio_wrapper.context.set_orientation(([1.0,1.0,1.0], [rotx, roty, rotz])).unwrap();
 
                 let mut decode = vec![0i16; 320];
                 opus_decoder.decode(&data, &mut decode, false).unwrap();
-
+                println!("Hm...");
                 let mut empty_buffer: Vec<alto::Mono<i16>> = vec![alto::Mono::<i16> { center : 0 }; 320 as usize];
                 for (num, x) in decode.iter().enumerate(){
                     empty_buffer[num].center = *x;
                 }
-
+                println!("Maybe here?");
                 //Creating AL buffer
                 let buf = audio_wrapper.context.new_buffer::<alto::Mono<i16>,_>(&empty_buffer, 16000).unwrap();
                 buffer_queue.push_back(buf);
                 //Check if buffer not empty
                 if buffer_queue.len() > 0 {
+                    println!("Oh really?");
                     //Pushing buffer in src
                     let mut buf = buffer_queue.pop_front().unwrap();
                     buf.set_data(&empty_buffer, 16000).unwrap();
                     src.queue_buffer(buf);
+                    println!("Now 100% bug");
                     //Playing sound from buffer
                     if src.state() != alto::SourceState::Playing {
                         src.play()
