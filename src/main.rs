@@ -38,6 +38,14 @@ fn main(){
     let args: Vec<_> = env::args().collect();
     let mut scrw: u32 = 1024;
     let mut scrh: u32 = 768;
+    let ip = {
+        if args.len() > 1 {
+            args[1].clone()
+        }
+        else{
+            "127.0.0.1:4587".to_string()
+        }
+    };
     let hmdid = {
         if args.len() > 2 {
             1
@@ -57,7 +65,6 @@ fn main(){
     let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
     let (tx_netsound_out, rx_netsound_out) = channel::<AudioMsg>();
     {
-        let ip = args[1].clone();
         thread::spawn(move || {
             let mut client = network::Network::new();
             println!("Connecting to server...");
