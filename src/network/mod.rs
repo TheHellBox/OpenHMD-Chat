@@ -35,11 +35,11 @@ impl NetAudio {
 impl Network {
     pub fn new() -> Network{
         use std::time::Duration;
-        
+
         let mut config = Config::default();
         config.connection_closing_threshold = Duration::from_millis(5000);
         config.connection_drop_threshold = Duration::from_millis(2000);
-        config.connection_closing_threshold = Duration::from_millis(2000);
+        config.connection_init_threshold = Duration::from_millis(2000);
         let mut client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
         Network{
             client: client
