@@ -52,15 +52,17 @@ impl Draw_Display{
 
         for (id, object) in &buf.render_obj_buf {
             let (rotx, roty, rotz, rotw) = object.rotation;
+            let (sizex, sizey, sizez) = object.size;
             let (x, y, z) = object.position;
-            let rotmatrix = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_rotation_matrix().unwrap();
+            let rotmatrix = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_homogeneous();
             //println!("{:?}", rotmatrix);
-            let matrix = [
-                [0.1 + rotmatrix[0], 0.0 + rotmatrix[1], 0.0 + rotmatrix[2], 0.0],
-                [0.0 + rotmatrix[3], 0.1 + rotmatrix[4], 0.0 + rotmatrix[5], 0.0],
-                [0.0 + rotmatrix[6], 0.0 + rotmatrix[7], 0.1 + rotmatrix[8], 0.0],
+
+            let matrix = nalg_to_4x4(mat_to_nalg([
+                [sizex, 0.0, 0.0, 0.0],
+                [0.0, sizey, 0.0, 0.0],
+                [0.0, 0.0, sizez, 0.0],
                 [ x , y, z, 1.0f32],
-            ];
+            ]) * rotmatrix);
 
             let mesh = match buf.mesh_buf.get(&object.mesh_name) {
                 Some(x) => x,
@@ -84,7 +86,7 @@ impl Draw_Display{
                 &mesh.mesh,
                 &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                 prog,
-                &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex },
+                &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2, tex: tex },
                 &params_eye2
             ).unwrap();
         }

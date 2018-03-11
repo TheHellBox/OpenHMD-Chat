@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use rand;
 use rand::Rng;
 
+#[derive(PartialEq)]
 pub enum ElementType{
     Button,
     Text,
@@ -13,11 +14,13 @@ pub struct VRGui{
     pub elements: HashMap<u32, Element>
 }
 
+#[derive(PartialEq)]
 pub struct Element{
     pub position: (f32, f32),
     pub size: (f32, f32),
     pub container: (bool, String),
     pub el_type: ElementType,
+    pub visible: bool,
     pub rend_id: u32
 }
 
@@ -28,6 +31,7 @@ impl Element{
             size: size,
             container: container,
             el_type: el_type,
+            visible: true,
             rend_id: rand::thread_rng().gen_range(0, 10000)
         }
     }

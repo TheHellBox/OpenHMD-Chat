@@ -150,7 +150,9 @@ fn main(){
         mesh_name: "./assets/models/scene.obj".to_string(),
         tex_name: "./assets/textures/background.png".to_string(),
         position: (0.0,0.0,0.0),
-        rotation: (0.0, 0.0, 1.0, 0.0)
+        rotation: (0.0, 0.0, 1.0, 0.0),
+        size: (1.0, 1.0, 1.0),
+        visible: true
     };
     render_data.render_obj_buf.insert(1, scene);
 
@@ -161,8 +163,10 @@ fn main(){
     let mut gilrs = Gilrs::new().unwrap();
 
     let mut vr_gui = vr_gui::VRGui::new();
-    let test_element = vr_gui::Element::new((0.0,0.0), (1.0,1.0), (false, "Test".to_string()), vr_gui::ElementType::Panel);
+    let test_element = vr_gui::Element::new((3.0,0.0), (1.0,2.0), (false, "./assets/textures/test.png".to_string()), vr_gui::ElementType::Panel);
+    let test_element2 = vr_gui::Element::new((0.0,0.0), (1.0,1.0), (false, "./assets/textures/test.png".to_string()), vr_gui::ElementType::Panel);
     vr_gui.push_element(test_element);
+    vr_gui.push_element(test_element2);
     // Audio stuff
     thread::spawn(move || {
         audio::start_audio(&tx_netsound_in, &rx_netsound_out, &rx_players);
@@ -177,7 +181,9 @@ fn main(){
                 mesh_name: "./assets/models/monkey.obj".to_string(),
                 tex_name: "./assets/textures/test.png".to_string(),
                 position: data.position,
-                rotation: (x,y,z,w)
+                rotation: (x,y,z,w),
+                size: (1.0, 1.0, 1.0),
+                visible: true
             };
             render_data.render_obj_buf.insert(data.id, new_player);
             playerlist.insert(data.id, data);
@@ -197,6 +203,22 @@ fn main(){
                 };
             }
         }
+        for (id, x) in &vr_gui.elements{
+            if x.el_type == vr_gui::ElementType::Panel {
+                let (gui_posx, gui_posy) = x.position;
+                let (gui_sizex, gui_sizey) = x.size;
+                let (prop, texture) = x.container.clone();
+                let object = render::RenderObject{
+                    mesh_name: "./assets/models/cube.obj".to_string(),
+                    tex_name: texture,
+                    position: (-posx + gui_posx,-posy + gui_posy,-posz - 2.0),
+                    rotation: (0.0, 0.0, 1.0, 0.0),
+                    size: (gui_sizex, gui_sizey, 0.1),
+                    visible: x.visible
+                };
+                render_data.render_obj_buf.insert(x.rend_id, object);
+            }
+        }
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
         camera.set_pos(nalgebra::Vector3::new(posx,posy,posz));
         //ohmd_device.setf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR, ohmd_pos)
@@ -209,6 +231,7 @@ fn main(){
         let elapsed = sys_time.elapsed().unwrap();
         let fps = 1000 / ((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64 + 1);
         tx_players.send(playerlist.clone());
+
         //println!("FPS: {}", fps);
     }
 }
