@@ -84,7 +84,7 @@ impl Draw_Display{
                 &mesh.mesh,
                 &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                 prog,
-                &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2,u_light: [-1.0, 0.4, 0.9f32]},
+                &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex },
                 &params_eye2
             ).unwrap();
         }
