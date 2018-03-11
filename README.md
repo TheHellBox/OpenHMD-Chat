@@ -20,7 +20,7 @@ I think it best programming language for games, it easy to use and fast
 Still no, you must compile it
 
 # TO DO
-Voice communication (70%)
+Voice communication (90%)
 
 GUI (0%)
 
