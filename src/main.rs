@@ -34,6 +34,7 @@ fn main(){
     use std::sync::mpsc;
     use gilrs::{Gilrs, Button, Event, EventType};
     use audio::AudioMsg;
+    use render::window::RenderMode;
 
     //Some other stuff...
     let args: Vec<_> = env::args().collect();
@@ -47,18 +48,21 @@ fn main(){
             "127.0.0.1:4587".to_string()
         }
     };
+    let mut vrmode = RenderMode::VR;
     let hmdid = {
         if args.len() > 2 {
+            vrmode = RenderMode::Desktop;
             1
         }
         else{
+            vrmode = RenderMode::VR;
             0
         }
     };
     //Generating random player position
-    let mut posx = rand::thread_rng().gen_range(-10.0, 10.0);
+    let mut posx = rand::thread_rng().gen_range(-7.0, 7.0);
     let mut posy = 0.0;
-    let mut posz = rand::thread_rng().gen_range(-10.0, 10.0);
+    let mut posz = rand::thread_rng().gen_range(-7.0, 7.0);
     //Create communication channels
     let (tx_player, rx_player) = channel::<player::Player>();
     let (tx_players, rx_players) = channel::<HashMap<u32, player::Player>>();
@@ -125,7 +129,7 @@ fn main(){
     let mut playerlist: HashMap<u32, player::Player>  = HashMap::with_capacity(128);
 
     println!("Opening window...");
-    let mut window = Window::new(scrw,scrh,"test");
+    let mut window = Window::new(scrw,scrh, "test", &vrmode);
 
     let (display, events_loop) = window.get_display();
 
@@ -161,12 +165,25 @@ fn main(){
     println!("Done!");
     //gamepad stuff
     let mut gilrs = Gilrs::new().unwrap();
+    //Glium Text
+    //let gli_text = glium_text::TextSystem::new(&display);
+    //let font = glium_text::FontTexture::new(&display, std::fs::File::open(&std::path::Path::new("./assets/fonts/Roboto-Regular.ttf")).unwrap(), 24).unwrap();
+    //let text = glium_text::TextDisplay::new(&system, &font, "Hello world!");
 
     let mut vr_gui = vr_gui::VRGui::new();
     let test_element = vr_gui::Element::new((3.0,0.0), (1.0,2.0), (false, "./assets/textures/test.png".to_string()), vr_gui::ElementType::Panel);
     let test_element2 = vr_gui::Element::new((0.0,0.0), (1.0,1.0), (false, "./assets/textures/test.png".to_string()), vr_gui::ElementType::Panel);
     vr_gui.push_element(test_element);
     vr_gui.push_element(test_element2);
+
+    let mut settings_active = false;
+
+    let mut player_speed_forward = 0.0;
+    let mut player_speed_lr = 0.0;
+    let mut player_moving = false;
+
+    let mut posx_ghost = -posx;
+    let mut posz_ghost = -posy;
     // Audio stuff
     thread::spawn(move || {
         audio::start_audio(&tx_netsound_in, &rx_netsound_out, &rx_players);
@@ -194,14 +211,46 @@ fn main(){
             while let Some(event) = gilrs.next_event() {
                 match event {
                     Event { id, event: EventType::AxisChanged(gilrs::ev::Axis::LeftStickY, val1, val2), .. } => {
-                        posx += val1 / 5.0;
+                        if val1 > 0.1{
+                            player_speed_forward = 0.2 * val1;
+                        }
+                        else if val1 < -0.1{
+                            player_speed_forward = 0.2 * val1;
+                        }
+                        else if (val1 > -0.1) & (val1 < 0.1){
+                            player_speed_forward = 0.0;
+                        }
+
                     }
                     Event { id, event: EventType::AxisChanged(gilrs::ev::Axis::LeftStickX, val1, val2), .. } => {
-                        posz += val1 / 5.0;
+                        if val1 > 0.1{
+                            player_speed_lr = 0.2 * val1;
+                        }
+                        else if val1 < -0.1{
+                            player_speed_lr = 0.2 * val1;
+                        }
+                        else if (val1 > -0.1) & (val1 < 0.1){
+                            player_speed_lr = 0.0;
+                        }
+                    }
+                    Event { id, event: EventType::ButtonPressed(gilrs::ev::Button::Start, val1), .. } => {
+                        settings_active = match settings_active{
+                            false => true,
+                            true => false,
+                        };
                     }
                     _ => (),
                 };
             }
+        }
+
+        if (player_speed_forward == 0.0) & (player_speed_lr == 0.0){
+            player_moving = false;
+            posx = -posx_ghost;
+            posz = -posz_ghost;
+        }
+        else{
+            player_moving = true;
         }
         for (id, x) in &vr_gui.elements{
             if x.el_type == vr_gui::ElementType::Panel {
@@ -214,7 +263,7 @@ fn main(){
                     position: (-posx + gui_posx,-posy + gui_posy,-posz - 2.0),
                     rotation: (0.0, 0.0, 1.0, 0.0),
                     size: (gui_sizex, gui_sizey, 0.1),
-                    visible: x.visible
+                    visible: settings_active
                 };
                 render_data.render_obj_buf.insert(x.rend_id, object);
             }
@@ -224,14 +273,32 @@ fn main(){
         //ohmd_device.setf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR, ohmd_pos)
         let quat = UnitQuaternion::from_quaternion(Quaternion::new(ohmd_orient[0], -ohmd_orient[1], ohmd_orient[2], -ohmd_orient[3]));
 
+        let matrix = quat.to_homogeneous();
+        //Moving player
+        if player_moving {
+            posx_ghost -= matrix[8] * player_speed_forward + matrix[0] * player_speed_lr;
+            posz_ghost -= matrix[10] * player_speed_forward + matrix[2] * player_speed_lr;
+            let mut ghost = render::RenderObject{
+                mesh_name: "./assets/models/monkey.obj".to_string(),
+                tex_name: "./assets/textures/test.png".to_string(),
+                position: (posx_ghost, posy, posz_ghost),
+                rotation: (quat[0], quat[1], quat[2], quat[3]),
+                size: (1.0, 1.0, 1.0),
+                visible: true
+            };
+            render_data.render_obj_buf.insert(11119, ghost);
+        }
+        else{
+            render_data.render_obj_buf.remove(&(11119 as u32) );
+        }
+
         tx_orient.send(((quat[0],quat[1],quat[2],quat[3]), (posx,posy,posz)));
         //Render
-        display.draw(&render_data, &program, &ohmd_device, &camera, (scrw, scrh));
+        display.draw(&render_data, &program, &ohmd_device, &camera, (scrw, scrh), &vrmode);
 
         let elapsed = sys_time.elapsed().unwrap();
-        let fps = 1000 / ((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64 + 1);
+        let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);
         tx_players.send(playerlist.clone());
-
-        //println!("FPS: {}", fps);
+        //println!("FPS: {}", fps as u32);
     }
 }

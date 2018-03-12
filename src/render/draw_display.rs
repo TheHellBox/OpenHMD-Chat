@@ -9,13 +9,17 @@ pub struct Draw_Display{
 }
 
 impl Draw_Display{
-    pub fn draw(&self, buf: &render::RenderData, prog: &Program, device: &openhmd_rs::Device,camera: &render::camera::Camera, scr: (u32,u32)){
+    pub fn draw(&self, buf: &render::RenderData, prog: &Program, device: &openhmd_rs::Device,camera: &render::camera::Camera, scr: (u32,u32), mode: &render::window::RenderMode){
         use glium::Surface;
         use nalgebra::geometry::{UnitQuaternion, Quaternion};
         use nalgebra::core::Vector4;
         let mut target = self.display.draw();
 
         let (scrw, scrh) = scr;
+        let scrsize = match mode{
+            &render::window::RenderMode::VR => scrw / 2,
+            &render::window::RenderMode::Desktop => scrw,
+        };
         target.clear_color_and_depth((0.2, 0.2, 0.4, 1.0), 1.0);
 
         let params = glium::DrawParameters {
@@ -25,7 +29,7 @@ impl Draw_Display{
                 .. Default::default()
             },
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
-            viewport: Some(glium::Rect{left: 0, bottom: 0, width: scrw / 2, height: scrh}),
+            viewport: Some(glium::Rect{left: 0, bottom: 0, width: scrsize, height: scrh}),
             .. Default::default()
         };
 
@@ -36,7 +40,7 @@ impl Draw_Display{
                 .. Default::default()
             },
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
-            viewport: Some(glium::Rect{left: scrw / 2, bottom: 0, width: scrw / 2, height: scrh}),
+            viewport: Some(glium::Rect{left: scrsize, bottom: 0, width: scrw / 2, height: scrh}),
             .. Default::default()
         };
 
@@ -51,44 +55,48 @@ impl Draw_Display{
         let oproj2 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX));
 
         for (id, object) in &buf.render_obj_buf {
-            let (rotx, roty, rotz, rotw) = object.rotation;
-            let (sizex, sizey, sizez) = object.size;
-            let (x, y, z) = object.position;
-            let rotmatrix = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_homogeneous();
-            //println!("{:?}", rotmatrix);
+            if object.visible == true{
+                let (rotx, roty, rotz, rotw) = object.rotation;
+                let (sizex, sizey, sizez) = object.size;
+                let (x, y, z) = object.position;
+                let rotmatrix = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_homogeneous();
+                //println!("{:?}", rotmatrix);
 
-            let matrix = nalg_to_4x4(mat_to_nalg([
-                [sizex, 0.0, 0.0, 0.0],
-                [0.0, sizey, 0.0, 0.0],
-                [0.0, 0.0, sizez, 0.0],
-                [ x , y, z, 1.0f32],
-            ]) * rotmatrix);
+                let matrix = nalg_to_4x4(mat_to_nalg([
+                    [sizex, 0.0, 0.0, 0.0],
+                    [0.0, sizey, 0.0, 0.0],
+                    [0.0, 0.0, sizez, 0.0],
+                    [ x , y, z, 1.0f32],
+                ]) * rotmatrix);
 
-            let mesh = match buf.mesh_buf.get(&object.mesh_name) {
-                Some(x) => x,
-                None => { buf.mesh_buf.get("./assets/models/monkey.obj").unwrap() },
-                _ => { buf.mesh_buf.get("./assets/models/monkey.obj").unwrap() }
-            };
-            let tex = match buf.texture_buf.get(&object.tex_name) {
-                Some(x) => x,
-                None => { buf.texture_buf.get("./assets/textures/test.png").unwrap() },
-                _ => { buf.texture_buf.get("./assets/textures/test.png").unwrap() }
-            };
-            //println!("{}", &object.mesh_name);
-            target.draw(
-                &mesh.mesh,
-                &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
-                prog,
-                &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex },
-                &params
-            ).unwrap();
-            target.draw(
-                &mesh.mesh,
-                &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
-                prog,
-                &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2, tex: tex },
-                &params_eye2
-            ).unwrap();
+                let mesh = match buf.mesh_buf.get(&object.mesh_name) {
+                    Some(x) => x,
+                    None => { buf.mesh_buf.get("./assets/models/monkey.obj").unwrap() },
+                    _ => { buf.mesh_buf.get("./assets/models/monkey.obj").unwrap() }
+                };
+                let tex = match buf.texture_buf.get(&object.tex_name) {
+                    Some(x) => x,
+                    None => { buf.texture_buf.get("./assets/textures/test.png").unwrap() },
+                    _ => { buf.texture_buf.get("./assets/textures/test.png").unwrap() }
+                };
+                //println!("{}", &object.mesh_name);
+                target.draw(
+                    &mesh.mesh,
+                    &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+                    prog,
+                    &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex },
+                    &params
+                ).unwrap();
+                if mode == &render::window::RenderMode::VR {
+                    target.draw(
+                        &mesh.mesh,
+                        &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
+                        prog,
+                        &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2, tex: tex },
+                        &params_eye2
+                    ).unwrap();
+                }
+            }
         }
         target.finish().unwrap();
     }

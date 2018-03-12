@@ -16,13 +16,10 @@ I made OpenHMD binding for Rust. Also, it most easy to use library and it open s
 # Why Rust?
 I think it best programming language for games, it easy to use and fast
 
-# Releases?
-Still no, you must compile it
-
 # TO DO
 Voice communication (90%)
 
-GUI (0%)
+GUI (20%)
 
 Text chat (0%)
 
