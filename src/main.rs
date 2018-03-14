@@ -157,7 +157,7 @@ fn main(){
 
     println!("Building shaders...");
     let program = glium::Program::from_source(&display.display, &render::shader_simple_vert, &render::shader_simple_frag, None).unwrap();
-    println!("Building OHM distortion correction shader...");
+    println!("Building OHMD distortion correction shader...");
     let ohmd_dis_shaders = glium::Program::from_source(&display.display, &render::shader_distortion_vert, &render::shader_distortion_frag, None).unwrap();
 
     println!("Done!");

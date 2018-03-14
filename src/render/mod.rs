@@ -82,46 +82,63 @@ void main() {
 
 pub const shader_distortion_frag: &'static str = r#"
 #version 330
+
+//per eye texture to warp for lens distortion
 uniform sampler2D warpTexture;
+
+//Position of lens center in m (usually eye_w/2, eye_h/2)
 uniform vec2 LensCenter;
+//Scale from texture co-ords to m (usually eye_w, eye_h)
 uniform vec2 ViewportScale;
+//Distortion overall scale in m (usually ~eye_w/2)
 uniform float WarpScale;
+//Distoriton coefficients (PanoTools model) [a,b,c,d]
 uniform vec4 HmdWarpParam;
+
+//chromatic distortion post scaling
 uniform vec3 aberr;
+
 in vec2 T;
-in vec2 v_tex_coords;
 out vec4 color;
 
 void main()
 {
+    //output_loc is the fragment location on screen from [0,1]x[0,1]
     vec2 output_loc = vec2(T.s, T.t);
+    //Compute fragment location in lens-centered co-ordinates at world scale
     vec2 r = output_loc * ViewportScale - LensCenter;
+    //scale for distortion model
+    //distortion model has r=1 being the largest circle inscribed (e.g. eye_w/2)
     r /= WarpScale;
 
+    //|r|**2
     float r_mag = length(r);
+    //offset for which fragment is sourced
     vec2 r_displaced = r * (HmdWarpParam.w + HmdWarpParam.z * r_mag +
     HmdWarpParam.y * r_mag * r_mag +
     HmdWarpParam.x * r_mag * r_mag * r_mag);
+    //back to world scale
     r_displaced *= WarpScale;
+    //back to viewport co-ord
     vec2 tc_r = (LensCenter + aberr.r * r_displaced) / ViewportScale;
     vec2 tc_g = (LensCenter + aberr.g * r_displaced) / ViewportScale;
     vec2 tc_b = (LensCenter + aberr.b * r_displaced) / ViewportScale;
+
     float red = texture(warpTexture, tc_r).r;
     float green = texture(warpTexture, tc_g).g;
     float blue = texture(warpTexture, tc_b).b;
-
-    color =  ((tc_g.x < 0.0) || (tc_g.x > 1.0) || (tc_g.y < 0.0) || (tc_g.y > 1.0)) ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(red, green, blue, 1.0);
+    //Black edges off the texture
+    color = ((tc_g.x < 0.0) || (tc_g.x > 1.0) || (tc_g.y < 0.0) || (tc_g.y > 1.0)) ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(red, green, blue, 1.0);
 }
 "#;
 
 pub const shader_distortion_vert: &'static str = r#"
 #version 330
-
-in vec2 coords;
+layout (location=0) in vec2 coords;
 uniform mat4 mvp;
 out vec2 T;
-
-void main(void) {
+void main(void)
+{
     T = coords;
     gl_Position = mvp * vec4(coords, 0.0, 1.0);
 }
