@@ -106,34 +106,33 @@ impl Draw_Display{
 
 
 
-        let warp_tex = buf.texture_buf.get("./assets/textures/background.png").unwrap();
+        let warp_tex = buf.texture_buf.get("./assets/textures/lookmumigotsomething.png").unwrap();
         let warp_scale = hmd_params.left_lens_center[0] / hmd_params.right_lens_center[0];
 
         let vert_buf = glium::VertexBuffer::new(&self.display,
             &[
-                OhmdVertex { coords: [ -1.0, -1.0 ]},
-                OhmdVertex { coords: [ 0.0, -1.0 ]},
-                OhmdVertex { coords: [ 0.0,  1.0 ]},
-                OhmdVertex { coords: [ -1.0,  1.0 ]},
-            ]
-        ).unwrap();
-
-        let vert_buf2 = glium::VertexBuffer::new(&self.display,
-            &[
-                OhmdVertex { coords: [ 0.0, -1.0 ]},
-                OhmdVertex { coords: [ 1.0, -1.0 ]},
-                OhmdVertex { coords: [ 1.0,  1.0 ]},
-                OhmdVertex { coords: [ 0.0,  1.0 ]},
+                OhmdVertex { coords: [ 0.0, 0.0 ]},
+                OhmdVertex { coords: [ 1.0, 0.0 ]},
+                OhmdVertex { coords: [ 1.0,  2.0 ]},
+                OhmdVertex { coords: [ 0.0,  2.0 ]},
             ]
         ).unwrap();
 
         let index_buffer = glium::IndexBuffer::new(&self.display, glium::index::PrimitiveType::TriangleStrip,
             &[1 as u16, 2, 0, 3]).unwrap();
+
         let matrix = [
             [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
-            [ 0.0 , 0.0, 0.0, 1.0f32],
+            [ 0.0 , -1.0, 0.0, 1.0f32],
+        ];
+
+        let matrix2 = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [ -1.0 , -1.0, 0.0, 1.0f32],
         ];
 
         target.draw(
@@ -146,10 +145,10 @@ impl Draw_Display{
         ).unwrap();
 
         target.draw(
-            &vert_buf2,
+            &vert_buf,
             &index_buffer,
             &ohmd_prog,
-            &uniform! { warpTexture: warp_tex, mvp: matrix, LensCenter: hmd_params.right_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: warp_scale,
+            &uniform! { warpTexture: warp_tex, mvp: matrix2, LensCenter: hmd_params.right_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: warp_scale,
                 HmdWarpParam: hmd_params.distortion_k, aberr: hmd_params.aberration_k},
             &params_dis
         ).unwrap();
