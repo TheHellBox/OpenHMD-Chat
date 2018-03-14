@@ -1,5 +1,6 @@
 use glium::{Display, Program};
 use render;
+use render::OhmdVertex;
 use glium;
 use openhmd_rs;
 use nalgebra;
@@ -9,7 +10,8 @@ pub struct Draw_Display{
 }
 
 impl Draw_Display{
-    pub fn draw(&self, buf: &render::RenderData, prog: &Program, device: &openhmd_rs::Device,camera: &render::camera::Camera, scr: (u32,u32), mode: &render::window::RenderMode){
+    pub fn draw(&self, buf: &render::RenderData, prog: &Program, ohmd_prog: &Program, device: &openhmd_rs::Device,camera: &render::camera::Camera,
+                                                                scr: (u32,u32), mode: &render::window::RenderMode, hmd_params: &render::HMDParams){
         use glium::Surface;
         use nalgebra::geometry::{UnitQuaternion, Quaternion};
         use nalgebra::core::Vector4;
@@ -20,7 +22,7 @@ impl Draw_Display{
             &render::window::RenderMode::VR => scrw / 2,
             &render::window::RenderMode::Desktop => scrw,
         };
-        target.clear_color_and_depth((0.2, 0.2, 0.4, 1.0), 1.0);
+        target.clear_color_and_depth((0.2, 0.2, 0.7, 1.0), 1.0);
 
         let params = glium::DrawParameters {
             depth: glium::Depth {
@@ -43,7 +45,9 @@ impl Draw_Display{
             viewport: Some(glium::Rect{left: scrsize, bottom: 0, width: scrw / 2, height: scrh}),
             .. Default::default()
         };
-
+        let params_dis = glium::DrawParameters {
+            .. Default::default()
+        };
         let mut view = camera.view.to_homogeneous();
         let omodelv1 = mat_to_nalg(m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX)));
         let omodelv1 = nalg_to_4x4((omodelv1* view));
@@ -80,11 +84,12 @@ impl Draw_Display{
                     _ => { buf.texture_buf.get("./assets/textures/test.png").unwrap() }
                 };
                 //println!("{}", &object.mesh_name);
+                //LensCenter: lens_center,ViewportScale: viewport_scale, WarpScale: warp_scale, HmdWarpParam: hmd_params.distortion_k, aberr: hmd_params.aberration_k
                 target.draw(
                     &mesh.mesh,
                     &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                     prog,
-                    &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex },
+                    &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex},
                     &params
                 ).unwrap();
                 if mode == &render::window::RenderMode::VR {
@@ -92,12 +97,63 @@ impl Draw_Display{
                         &mesh.mesh,
                         &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                         prog,
-                        &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2, tex: tex },
+                        &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2, tex: tex},
                         &params_eye2
                     ).unwrap();
                 }
             }
         }
+
+
+
+        let warp_tex = buf.texture_buf.get("./assets/textures/background.png").unwrap();
+        let warp_scale = hmd_params.left_lens_center[0] / hmd_params.right_lens_center[0];
+
+        let vert_buf = glium::VertexBuffer::new(&self.display,
+            &[
+                OhmdVertex { coords: [ -1.0, -1.0 ]},
+                OhmdVertex { coords: [ 0.0, -1.0 ]},
+                OhmdVertex { coords: [ 0.0,  1.0 ]},
+                OhmdVertex { coords: [ -1.0,  1.0 ]},
+            ]
+        ).unwrap();
+
+        let vert_buf2 = glium::VertexBuffer::new(&self.display,
+            &[
+                OhmdVertex { coords: [ 0.0, -1.0 ]},
+                OhmdVertex { coords: [ 1.0, -1.0 ]},
+                OhmdVertex { coords: [ 1.0,  1.0 ]},
+                OhmdVertex { coords: [ 0.0,  1.0 ]},
+            ]
+        ).unwrap();
+
+        let index_buffer = glium::IndexBuffer::new(&self.display, glium::index::PrimitiveType::TriangleStrip,
+            &[1 as u16, 2, 0, 3]).unwrap();
+        let matrix = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [ 0.0 , 0.0, 0.0, 1.0f32],
+        ];
+
+        target.draw(
+            &vert_buf,
+            &index_buffer,
+            &ohmd_prog,
+            &uniform! { warpTexture: warp_tex, mvp: matrix, LensCenter: hmd_params.left_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: warp_scale,
+                HmdWarpParam: hmd_params.distortion_k, aberr: hmd_params.aberration_k},
+            &params_dis
+        ).unwrap();
+
+        target.draw(
+            &vert_buf2,
+            &index_buffer,
+            &ohmd_prog,
+            &uniform! { warpTexture: warp_tex, mvp: matrix, LensCenter: hmd_params.right_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: warp_scale,
+                HmdWarpParam: hmd_params.distortion_k, aberr: hmd_params.aberration_k},
+            &params_dis
+        ).unwrap();
+
         target.finish().unwrap();
     }
 }

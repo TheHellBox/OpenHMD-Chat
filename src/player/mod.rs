@@ -10,6 +10,17 @@ pub struct Player {
     pub model: String,
     pub name: String
 }
+pub struct LocalPlayer {
+    pub position: (f32, f32, f32),
+    pub rotation: (f32, f32, f32, f32),
+
+    pub player_speed_f: f32,
+    pub player_speed_lr: f32,
+
+    pub ghost_position: (f32, f32, f32),
+    pub player_moving: bool
+}
+
 impl Player {
     pub fn to_network(&self) -> Vec<u8>{
         self.encode::<u8>().unwrap()

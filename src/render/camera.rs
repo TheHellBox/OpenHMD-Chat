@@ -12,6 +12,6 @@ impl Camera{
         }
     }
     pub fn set_pos(&mut self, pos: Vector3<f32>){
-        self.view.vector = pos;
+        self.view.vector = -pos;
     }
 }
