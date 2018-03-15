@@ -134,7 +134,6 @@ fn main(){
     left_lens_center[0] = view_port_scale[0] - sep/2.0;
     right_lens_center[0] = sep/2.0;
 
-    println!("{} {} {:?}", scr_size_w, scr_size_h, distortion_k);
     let hmd_params = render::HMDParams{
         scr_size_w: scr_size_w,
         scr_size_h: scr_size_h,
@@ -267,7 +266,8 @@ fn main(){
         tx_orient.send(((quat[0],quat[1],quat[2],quat[3]), (posx,posy,posz)));
         tx_players.send(playerlist.clone());
         let elapsed = sys_time.elapsed().unwrap();
+        /*
         let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);
-        println!("FPS: {}", fps as u32);
+        println!("FPS: {}", fps as u32);*/
     }
 }
