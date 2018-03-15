@@ -167,7 +167,7 @@ impl Draw_Display{
             &vert_buf,
             &index_buffer,
             &ohmd_prog,
-            &uniform! {  warpTexture: &eye1_tex, mvp: matrix, LensCenter: hmd_params.left_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: 0.1 as f32,
+            &uniform! {  warpTexture: &eye1_tex, mvp: matrix, LensCenter: hmd_params.left_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: warp_scale,
                 HmdWarpParam: hmd_params.distortion_k, aberr: hmd_params.aberration_k},
             &params_dis
         ).unwrap();
