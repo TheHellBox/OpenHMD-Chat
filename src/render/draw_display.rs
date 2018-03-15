@@ -20,7 +20,7 @@ impl Draw_Display{
 
         let (scrw, scrh) = scr;
         let scrsize = match mode{
-            &render::window::RenderMode::VR => scrw / 2,
+            &render::window::RenderMode::VR => scrw,
             &render::window::RenderMode::Desktop => scrw,
         };
 
@@ -31,20 +31,9 @@ impl Draw_Display{
                 .. Default::default()
             },
             backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
-            viewport: Some(glium::Rect{left: 0, bottom: 0, width: scrsize, height: scrh}),
             .. Default::default()
         };
 
-        let params_eye2 = glium::DrawParameters {
-            depth: glium::Depth {
-                test: glium::DepthTest::IfLess,
-                write: true,
-                .. Default::default()
-            },
-            backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise,
-            viewport: Some(glium::Rect{left: scrsize, bottom: 0, width: scrw / 2, height: scrh}),
-            .. Default::default()
-        };
         let params_dis = glium::DrawParameters {
             .. Default::default()
         };
@@ -138,7 +127,7 @@ impl Draw_Display{
                         &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                         prog,
                         &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2, tex: tex},
-                        &params_eye2
+                        &params
                     ).unwrap();
                 }
             }
