@@ -113,9 +113,9 @@ fn main(){
     ohmd_context.update();
 
     println!("\nDevice description: ");
-    println!("Vendor:   {}", ohmd_context.list_gets(0, openhmd_rs::ohmd_string_value::OHMD_VENDOR));
-    println!("Product:  {}", ohmd_context.list_gets(0, openhmd_rs::ohmd_string_value::OHMD_PRODUCT));
-    println!("Path:     {}\n", ohmd_context.list_gets(0, openhmd_rs::ohmd_string_value::OHMD_PATH));
+    println!("Vendor:   {}", ohmd_context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_VENDOR));
+    println!("Product:  {}", ohmd_context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_PRODUCT));
+    println!("Path:     {}\n", ohmd_context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_PATH));
 
     scrw = ohmd_device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_HORIZONTAL_RESOLUTION) as u32;
     scrh = ohmd_device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_VERTICAL_RESOLUTION) as u32;
@@ -266,8 +266,8 @@ fn main(){
 
         tx_orient.send(((quat[0],quat[1],quat[2],quat[3]), (posx,posy,posz)));
         tx_players.send(playerlist.clone());
-        /*let elapsed = sys_time.elapsed().unwrap();
+        let elapsed = sys_time.elapsed().unwrap();
         let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);
-        println!("FPS: {}", fps as u32);*/
+        println!("FPS: {}", fps as u32);
     }
 }
