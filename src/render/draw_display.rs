@@ -121,7 +121,7 @@ impl Draw_Display{
                     &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex},
                     &params
                 ).unwrap();
-                if mode == &render::window::RenderMode::VR {
+                //if mode == &render::window::RenderMode::VR {
                     picking_target2.draw(
                         &mesh.mesh,
                         &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
@@ -129,7 +129,7 @@ impl Draw_Display{
                         &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2, tex: tex},
                         &params
                     ).unwrap();
-                }
+                //}
             }
         }
 
@@ -176,7 +176,7 @@ impl Draw_Display{
             &vert_buf,
             &index_buffer,
             &ohmd_prog,
-            &uniform! {  warpTexture: &eye1_tex, mvp: matrix2, LensCenter: hmd_params.right_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: warp_scale,
+            &uniform! {  warpTexture: &eye2_tex, mvp: matrix2, LensCenter: hmd_params.right_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: warp_scale,
                 HmdWarpParam: hmd_params.distortion_k, aberr: hmd_params.aberration_k},
             &params_dis
         ).unwrap();
