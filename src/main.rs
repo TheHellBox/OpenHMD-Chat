@@ -11,6 +11,7 @@ pub extern crate rand;
 pub extern crate gilrs;
 pub extern crate alto;
 pub extern crate opus;
+pub extern crate json;
 
 mod render;
 mod support;
@@ -120,6 +121,8 @@ fn main(){
     scrw = ohmd_device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_HORIZONTAL_RESOLUTION) as u32;
     scrh = ohmd_device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_VERTICAL_RESOLUTION) as u32;
 
+    // Calculating HMD params
+
     let scr_size_w = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_HORIZONTAL_SIZE)[0];
     let scr_size_h = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_VERTICAL_SIZE )[0];
     let distortion_k = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_DISTORTION_K );
@@ -147,13 +150,14 @@ fn main(){
     println!("HMD scrw res {}", scrw);
     println!("HMD scrh res {}", scrh);
 
+    //Creating playerlist
     let mut playerlist: HashMap<u32, player::Player>  = HashMap::with_capacity(128);
-
+    //Opening window
     println!("Opening window...");
     let mut window = Window::new(scrw,scrh, "test", &vrmode);
 
     let (display, events_loop) = window.get_display();
-
+    //Building shaders
     println!("Building shaders...");
     let program = glium::Program::from_source(&display.display, &render::shader_simple_vert, &render::shader_simple_frag, None).unwrap();
     println!("Building OHMD distortion correction shader...");
@@ -171,7 +175,7 @@ fn main(){
         texture_buf: texture_buffer,
         render_obj_buf: render_obj_buffer,
     };
-
+    //FIXME: Load assets from server
     let scene = render::RenderObject{
         mesh_name: "./assets/models/scene.obj".to_string(),
         tex_name: "./assets/textures/background.png".to_string(),
@@ -207,8 +211,12 @@ fn main(){
         player_speed_lr: 0.0,
 
         ghost_position: (posx, posy, posz),
+        ghost_rotation: (0.0, 0.0, 1.0, 0.0),
         player_moving: false
     };
+
+    let mut map = support::map_loader::Map::new();
+    //map.load("./assets/scenes/simple_scene.json".to_string());
     // Audio stuff
     thread::spawn(move || {
         audio::start_audio(&tx_netsound_in, &rx_netsound_out, &rx_players);

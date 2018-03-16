@@ -18,6 +18,7 @@ pub struct LocalPlayer {
     pub player_speed_lr: f32,
 
     pub ghost_position: (f32, f32, f32),
+    pub ghost_rotation: (f32, f32, f32, f32),
     pub player_moving: bool
 }
 

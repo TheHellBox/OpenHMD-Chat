@@ -50,7 +50,7 @@ impl Audio_Wrapper{
                 return Err("Failed to open context");
             }
         };
-        let mut dev_cap : alto::Capture<Mono<i16>> = match alto.open_capture(None, 16000, 1024){
+        let mut dev_cap : alto::Capture<Mono<i16>> = match alto.open_capture(None, 16000, 2048){
             Ok(x) => x,
             _ => {
                 return Err("Failed to open OpenAL default capture device");

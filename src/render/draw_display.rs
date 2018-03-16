@@ -133,8 +133,6 @@ impl Draw_Display{
             }
         }
 
-        println!("Done");
-
         let warp_scale = hmd_params.left_lens_center[0] / hmd_params.right_lens_center[0];
 
         let vert_buf = glium::VertexBuffer::new(&self.display,

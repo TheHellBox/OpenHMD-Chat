@@ -53,11 +53,15 @@ pub const shader_simple_frag: &'static str = r#"
 in vec3 v_normal;
 in vec2 v_tex_coords;
 out vec4 color;
+
 uniform sampler2D tex;
+
 void main() {
-    vec3 dark_color = vec3(0.3, 0.3, 0.3);
-    vec3 regular_color = vec3(0.8, 0.8, 0.8);
-    color = texture(tex, v_tex_coords);
+    vec3 u_light = vec3(0.1,0.1,0.4);
+    float brightness = dot(normalize(v_normal), normalize(u_light));
+    vec3 dark_color = vec3(0.7, 0.7, 0.7) * vec3(texture(tex, v_tex_coords));
+    vec3 regular_color = vec3(1.0, 1.0, 1.0) * vec3(texture(tex, v_tex_coords));
+    color = vec4(mix(dark_color, regular_color, brightness), 1.0);
 }
 "#;
 
@@ -74,7 +78,7 @@ uniform mat4 matrix;
 uniform mat4 view;
 void main() {
     mat4 modelview = view * matrix;
-    v_normal = transpose(inverse(mat3(modelview))) * normal;
+    v_normal = normal;
     gl_Position = perspective * modelview * vec4(position, 1.0);
     v_tex_coords = tex_coords;
 }
