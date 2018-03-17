@@ -23,13 +23,13 @@ GUI (20%)
 
 Text chat (0%)
 
-Arguments (40%)
+Command Line Arguments (40%)
 
 Ability to move around (40%)
 
-Gamepad support (30%)
+Gamepad support (50%)
 
-Ability to create worlds(5%)
+Ability to create worlds(40%)
 
 Animations(0%)
 
