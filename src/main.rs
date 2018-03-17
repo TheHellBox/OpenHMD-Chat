@@ -63,6 +63,7 @@ fn main(){
     };
     //Create communication channels
     let (tx_player, rx_player) = channel::<player::Player>();
+    let (tx_mapobj, rx_mapobj) = channel::<support::map_loader::MapObject>();
     let (tx_players, rx_players) = channel::<HashMap<u32, player::Player>>();
     let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
     let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
@@ -99,7 +100,7 @@ fn main(){
                     };
                     client.send(data.to_network(), 3);
                 }
-                client.check(&tx_player, &tx_netsound_out, &player);
+                client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
                 client.send(player.to_network(), 2);
             }
         });
@@ -175,16 +176,6 @@ fn main(){
         texture_buf: texture_buffer,
         render_obj_buf: render_obj_buffer,
     };
-    //FIXME: Load assets from server
-    let scene = render::RenderObject{
-        mesh_name: "./assets/models/scene.obj".to_string(),
-        tex_name: "./assets/textures/background.png".to_string(),
-        position: (0.0,0.0,0.0),
-        rotation: (0.0, 0.0, 1.0, 0.0),
-        size: (1.0, 1.0, 1.0),
-        visible: true
-    };
-    render_data.render_obj_buf.insert(1, scene);
 
     let mut camera = render::camera::Camera::new();
     //gamepad stuff
@@ -216,15 +207,26 @@ fn main(){
     };
 
     let mut map = support::map_loader::Map::new();
-    //map.load("./assets/scenes/simple_scene.json".to_string());
     // Audio stuff
     thread::spawn(move || {
         audio::start_audio(&tx_netsound_in, &rx_netsound_out, &rx_players);
     });
     //Starting main loop
     loop{
+        let map_objects = rx_mapobj.try_iter();
+        for x in map_objects{
+            println!("{:?}", x);
+            let mut new_object = render::RenderObject{
+                mesh_name: x.model.clone(),
+                tex_name: x.texture.clone(),
+                position: x.position,
+                rotation: x.rotation,
+                size: (1.0, 1.0, 1.0),
+                visible: true
+            };
+            render_data.render_obj_buf.insert(rand::thread_rng().gen_range(10000, 900000), new_object);
+        }
         let sys_time = SystemTime::now();
-        let data = rx_player.try_iter();
         let (posx, posy, posz) = local_player.position;
 
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
@@ -233,7 +235,7 @@ fn main(){
         let matrix = quat.to_homogeneous();
         local_player.rotation = (quat[0],quat[1],quat[2],quat[3]);
         gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat);
-
+        let data = rx_player.try_iter();
         for data in data{
             let (x,y,z,w) = data.rotation;
             let mut new_player = render::RenderObject{

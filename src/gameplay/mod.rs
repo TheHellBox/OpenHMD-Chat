@@ -46,8 +46,8 @@ pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer
 
     let (posx1, posy1, posz1) = local_player.position;
     let (posx2, posy2, posz2) = local_player.ghost_position;
-    let (posr_x,posr_y,posr_z) = (posx2 - posx1, posy2 - posy1, posz2 - posz1);
-    let ghost_rot_next = UnitQuaternion::look_at_rh(&Vector3::new(posr_x, 0.0, posr_z), &Vector3::new(0.0,-1.0,0.0));
+    let (posr_x,posr_y,posr_z) = ((posx2 + local_player.player_speed_f * 100.0) - posx1, posy2 - posy1, (posz2 + local_player.player_speed_lr * 100.0) - posz1);
+    let ghost_rot_next = UnitQuaternion::look_at_lh(&Vector3::new(-posr_x, 0.0, posr_z), &Vector3::new(0.0,-1.0,0.0));
     local_player.ghost_rotation = (ghost_rot_next[0], ghost_rot_next[1], ghost_rot_next[2], ghost_rot_next[3]);
     if (local_player.player_speed_f == 0.0) & (local_player.player_speed_lr == 0.0){
         local_player.player_moving = false;

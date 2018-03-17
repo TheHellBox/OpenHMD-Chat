@@ -1,4 +1,6 @@
 use player;
+use support;
+
 use bytevec::{ByteEncodable, ByteDecodable};
 use std::sync::mpsc;
 use audio::AudioMsg;
@@ -48,7 +50,7 @@ impl Network {
     pub fn connect(&mut self, addr: String){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
-    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player) {
+    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, tx_mobj: &mpsc::Sender<support::map_loader::MapObject>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player) {
         use nalgebra::geometry::UnitQuaternion;
         use nalgebra::geometry::Quaternion;
 
@@ -72,6 +74,10 @@ impl Network {
                                 player_rotation: (rotx, roty, rotz),
                                 source_id: data.id,
                             });
+                        },
+                        4 => {
+                            let object = support::map_loader::MapObject::from_network(message[1..message.len()].to_vec());
+                            tx_mobj.send(object);
                         },
                         _ => {}
                     }
