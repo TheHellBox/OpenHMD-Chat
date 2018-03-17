@@ -69,6 +69,7 @@ fn main(){
     let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
     let (tx_netsound_out, rx_netsound_out) = channel::<AudioMsg>();
     {
+
         thread::spawn(move || {
             let mut client = network::Network::new();
             println!("Connecting to server...");
@@ -208,14 +209,14 @@ fn main(){
 
     let mut map = support::map_loader::Map::new();
     // Audio stuff
+
     thread::spawn(move || {
-        audio::start_audio_capture(&tx_netsound_in);
+        audio::start_audio(&tx_netsound_in,&rx_netsound_out, &rx_players);
     });
-    thread::spawn(move || {
-        audio::start_audio_playback(&rx_netsound_out, &rx_players);
-    });
+
     //Starting main loop
     loop{
+        ohmd_context.update();
         let map_objects = rx_mapobj.try_iter();
         for x in map_objects{
             println!("{:?}", x);
@@ -251,8 +252,8 @@ fn main(){
             };
             render_data.render_obj_buf.insert(data.id, new_player);
             playerlist.insert(data.id, data);
+            tx_players.send(playerlist.clone());
         }
-        ohmd_context.update();
 
         for (id, x) in &vr_gui.elements{
             if x.el_type == vr_gui::ElementType::Panel {
@@ -276,8 +277,7 @@ fn main(){
         //Render
         display.draw(&render_data, &program, &ohmd_dis_shaders, &ohmd_device, &camera, (scrw, scrh), &vrmode, &hmd_params);
 
-        tx_orient.send(((quat[0],quat[1],quat[2],quat[3]), (posx,posy,posz)));
-        tx_players.send(playerlist.clone());
+        tx_orient.send(((-quat[0],-quat[1],quat[2],quat[3]), (posx,posy,posz)));
         let elapsed = sys_time.elapsed().unwrap();
         /*
         let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);
