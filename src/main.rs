@@ -209,7 +209,10 @@ fn main(){
     let mut map = support::map_loader::Map::new();
     // Audio stuff
     thread::spawn(move || {
-        audio::start_audio(&tx_netsound_in, &rx_netsound_out, &rx_players);
+        //audio::start_audio_capture(&tx_netsound_in);
+    });
+    thread::spawn(move || {
+        //audio::start_audio_playback(&rx_netsound_out, &rx_players);
     });
     //Starting main loop
     loop{

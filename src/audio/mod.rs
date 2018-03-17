@@ -104,7 +104,7 @@ impl Audio_Static_Source{
 
 }
 
-pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Receiver<HashMap<u32, player::Player>>){
+pub fn start_audio_capture(tx: &mpsc::Sender<AudioMsg>){
     //WARNING: Very poor code
     use std::collections::{VecDeque, HashMap};
     use std::thread;
@@ -112,15 +112,9 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
     let audio_wrapper = Audio_Wrapper::new();
     if audio_wrapper.is_ok(){
         let mut opus_encoder = opus::Encoder::new(16000, opus::Channels::Mono, opus::Application::Voip).unwrap();
-        let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
 
         let mut audio_wrapper = audio_wrapper.unwrap();
 
-        let mut sources = HashMap::new();
-        let mut src = audio_wrapper.create_static_source().unwrap().source;
-        sources.insert(0, src);
-
-        let mut buffer_queue : VecDeque<alto::Buffer> = VecDeque::<alto::Buffer>::new();
         let mut buffer: Vec<alto::Mono<i16>> = vec![alto::Mono::<i16> { center : 0 }; 320 as usize];
 
         audio_wrapper.start_capture();
@@ -145,6 +139,22 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                 player_rotation: audio_wrapper.player_rotation,
                 source_id: 0,
             });
+        }
+    }
+}
+
+pub fn start_audio_playback(rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Receiver<HashMap<u32, player::Player>>){
+    use std::collections::{VecDeque, HashMap};
+    use std::thread;
+    let audio_wrapper = Audio_Wrapper::new();
+    let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
+    let mut sources = HashMap::new();
+    let mut buffer_queue : VecDeque<alto::Buffer> = VecDeque::<alto::Buffer>::new();
+    if audio_wrapper.is_ok(){
+        let mut audio_wrapper = audio_wrapper.unwrap();
+        let mut src = audio_wrapper.create_static_source().unwrap().source;
+        sources.insert(0, src);
+        loop{
             let playerslist = rx_players.try_iter();
             for x in playerslist{
                 for (id, player) in x{
