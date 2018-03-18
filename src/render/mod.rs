@@ -48,7 +48,7 @@ pub struct HMDParams{
     pub aberration_k: [f32; 3]
 }
 
-pub const shader_simple_frag: &'static str = r#"
+pub const SHADER_SIMPLE_FRAG: &'static str = r#"
 #version 140
 in vec3 v_normal;
 in vec2 v_tex_coords;
@@ -65,7 +65,7 @@ void main() {
 }
 "#;
 
-pub const shader_simple_vert: &'static str = r#"
+pub const SHADER_SIMPLE_VERT: &'static str = r#"
 #version 330
 
 in vec3 position;
@@ -84,7 +84,7 @@ void main() {
 }
 "#;
 
-pub const shader_distortion_frag: &'static str = r#"
+pub const SHADER_DISTORTION_FRAG: &'static str = r#"
 #version 330
 
 //per eye texture to warp for lens distortion
@@ -136,7 +136,7 @@ void main()
 }
 "#;
 
-pub const shader_distortion_vert: &'static str = r#"
+pub const SHADER_DISTORTION_VERT: &'static str = r#"
 #version 330
 layout (location=0) in vec2 coords;
 uniform mat4 mvp;

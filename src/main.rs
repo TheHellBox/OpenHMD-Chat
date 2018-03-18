@@ -33,8 +33,7 @@ fn main(){
     use std::time::SystemTime;
     use std::thread;
     use std::sync::mpsc::channel;
-    use std::sync::mpsc;
-    use gilrs::{Gilrs, Button, Event, EventType};
+    use gilrs::{Gilrs};
     use audio::AudioMsg;
     use render::window::RenderMode;
 
@@ -130,7 +129,7 @@ fn main(){
     let distortion_k = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_DISTORTION_K );
     let aberration_k = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_ABERRATION_K );
 
-    let mut view_port_scale = [scr_size_w / 2.0, scr_size_h];
+    let view_port_scale = [scr_size_w / 2.0, scr_size_h];
 
     let sep = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_HORIZONTAL_SEPARATION )[0];
     let mut left_lens_center: [f32; 2] = [0.0, ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION)[0]];
@@ -161,15 +160,15 @@ fn main(){
     let (display, events_loop) = window.get_display();
     //Building shaders
     println!("Building shaders...");
-    let program = glium::Program::from_source(&display.display, &render::shader_simple_vert, &render::shader_simple_frag, None).unwrap();
+    let program = glium::Program::from_source(&display.display, &render::SHADER_SIMPLE_VERT, &render::SHADER_SIMPLE_FRAG, None).unwrap();
     println!("Building OHMD distortion correction shader...");
-    let ohmd_dis_shaders = glium::Program::from_source(&display.display, &render::shader_distortion_vert, &render::shader_distortion_frag, None).unwrap();
+    let ohmd_dis_shaders = glium::Program::from_source(&display.display, &render::SHADER_DISTORTION_VERT, &render::SHADER_DISTORTION_FRAG, None).unwrap();
 
     println!("Done!");
     //Loading some assets
     let mesh_buffer = support::obj_model_loader::gen_buffer(&display.display);
     let texture_buffer = support::texture_loader::gen_texture_buffer(&display.display);
-    let mut render_obj_buffer: HashMap<u32, render::RenderObject> = HashMap::with_capacity(1024);
+    let render_obj_buffer: HashMap<u32, render::RenderObject> = HashMap::with_capacity(1024);
 
     //Creating buffers and other stuff
     let mut render_data = render::RenderData{
@@ -207,7 +206,6 @@ fn main(){
         player_moving: false
     };
 
-    let mut map = support::map_loader::Map::new();
     // Audio stuff
 
     thread::spawn(move || {
@@ -235,8 +233,8 @@ fn main(){
 
         let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
         //ohmd_device.setf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR, ohmd_pos)
-        let quat = UnitQuaternion::from_quaternion(Quaternion::new(ohmd_orient[0], -ohmd_orient[1], ohmd_orient[2], -ohmd_orient[3]));
-        let matrix = quat.to_homogeneous();
+        let quat = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[1], ohmd_orient[2], -ohmd_orient[3]));
+
         local_player.rotation = (quat[0],quat[1],quat[2],quat[3]);
         gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat);
         let data = rx_player.try_iter();
@@ -252,14 +250,14 @@ fn main(){
             };
             render_data.render_obj_buf.insert(data.id, new_player);
             playerlist.insert(data.id, data);
-            tx_players.send(playerlist.clone());
+            let _ = tx_players.send(playerlist.clone());
         }
 
-        for (id, x) in &vr_gui.elements{
+        for (_, x) in &vr_gui.elements{
             if x.el_type == vr_gui::ElementType::Panel {
                 let (gui_posx, gui_posy) = x.position;
                 let (gui_sizex, gui_sizey) = x.size;
-                let (prop, texture) = x.container.clone();
+                let (_, texture) = x.container.clone();
                 let object = render::RenderObject{
                     mesh_name: "./assets/models/cube.obj".to_string(),
                     tex_name: texture,
@@ -277,7 +275,7 @@ fn main(){
         //Render
         display.draw(&render_data, &program, &ohmd_dis_shaders, &ohmd_device, &camera, (scrw, scrh), &vrmode, &hmd_params);
 
-        tx_orient.send(((-quat[0],-quat[1],quat[2],quat[3]), (posx,posy,posz)));
+        let _ = tx_orient.send(((quat[0],quat[1],quat[2],quat[3]), (posx,posy,posz)));
         let elapsed = sys_time.elapsed().unwrap();
         /*
         let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);

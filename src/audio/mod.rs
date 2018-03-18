@@ -1,16 +1,12 @@
 use alto;
 use opus;
 use alto::*;
-use alto::efx::{EaxReverbEffect, REVERB_PRESET_GENERIC};
 use player;
 
-use std::sync::Arc;
-use std::option::Option;
-use std::sync::mpsc::channel;
 use std::sync::mpsc;
 use std::collections::HashMap;
 
-pub struct Audio_Wrapper{
+pub struct AudioWrapper{
     pub alto: Alto,
     pub dev: alto::OutputDevice,
     pub dev_cap: alto::Capture<Mono<i16>>,
@@ -19,7 +15,7 @@ pub struct Audio_Wrapper{
     pub player_rotation: (f32,f32,f32)
 }
 
-pub struct Audio_Static_Source{
+pub struct AudioStaticSource{
     pub source: StreamingSource
 }
 
@@ -30,34 +26,34 @@ pub struct AudioMsg {
     pub source_id: u32
 }
 
-impl Audio_Wrapper{
-    pub fn new() -> Result<Audio_Wrapper, &'static str>{
-        let mut alto = match Alto::load_default(){
+impl AudioWrapper{
+    pub fn new() -> Result<AudioWrapper, &'static str>{
+        let alto = match Alto::load_default(){
             Ok(x) => x,
             _ => {
                 return Err("Failed to load OpenAL");
             }
         };
-        let mut dev = match alto.open(None){
+        let dev = match alto.open(None){
             Ok(x) => x,
             _ => {
                 return Err("Failed to open OpenAL default device");
             }
         };
-        let mut ctx = match dev.new_context(None){
+        let ctx = match dev.new_context(None){
             Ok(x) => x,
             _ => {
                 return Err("Failed to open context");
             }
         };
-        let mut dev_cap : alto::Capture<Mono<i16>> = match alto.open_capture(None, 16000, 2048){
+        let dev_cap : alto::Capture<Mono<i16>> = match alto.open_capture(None, 16000, 2048){
             Ok(x) => x,
             _ => {
                 return Err("Failed to open OpenAL default capture device");
             }
         };
 
-        Ok(Audio_Wrapper{
+        Ok(AudioWrapper{
             alto: alto,
             dev: dev,
             dev_cap: dev_cap,
@@ -66,29 +62,14 @@ impl Audio_Wrapper{
             player_rotation: (0.0, 0.0, 0.0),
         })
     }
-    pub fn create_static_source(&self) -> Result<Audio_Static_Source, &'static str>{
-        let mut slot = match self.dev.is_extension_present(alto::ext::Alc::Efx) {
-            true => {
-                let mut slot = self.context.new_aux_effect_slot().unwrap();
-                let mut reverb: EaxReverbEffect = self.context.new_effect().unwrap();
-                reverb.set_preset(&REVERB_PRESET_GENERIC).unwrap();
-                slot.set_effect(&reverb).unwrap();
-                Some(slot)
-            }
-            false => {
-                None
-            }
-        };
+    pub fn create_static_source(&self) -> Result<AudioStaticSource, &'static str>{
         let mut src = match self.context.new_streaming_source(){
             Ok(x) => x,
             _ => {
                 return Err("Failed to create static audio source");
             }
         };
-        if slot.is_some(){
-            //src.set_aux_send(0, &mut slot.unwrap()).unwrap();
-        }
-        Ok(Audio_Static_Source{
+        Ok(AudioStaticSource{
             source: src
         })
     }
@@ -100,16 +81,15 @@ impl Audio_Wrapper{
     }
 }
 
-impl Audio_Static_Source{
+impl AudioStaticSource{
 
 }
 
 pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Receiver<HashMap<u32, player::Player>>){
     //WARNING: Very poor code
     use std::collections::{VecDeque, HashMap};
-    use std::thread;
     println!("Init audio_wrapper");
-    let audio_wrapper = Audio_Wrapper::new();
+    let audio_wrapper = AudioWrapper::new();
     if audio_wrapper.is_ok(){
         let mut opus_encoder = opus::Encoder::new(16000, opus::Channels::Mono, opus::Application::Voip).unwrap();
         let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
@@ -117,11 +97,8 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
         let mut audio_wrapper = audio_wrapper.unwrap();
 
         let mut sources = HashMap::new();
-        let mut src = audio_wrapper.create_static_source().unwrap().source;
-        sources.insert(0, src);
 
         let mut buffer_queue : VecDeque<alto::Buffer> = VecDeque::<alto::Buffer>::new();
-        let mut buffer: Vec<alto::Mono<i16>> = vec![alto::Mono::<i16> { center : 0 }; 320 as usize];
 
         audio_wrapper.start_capture();
 
@@ -139,7 +116,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
             //Opus encoding
             let encode_buf = buffer.iter().map(|&x| x.center).collect::<Vec<_>>();
             let encoded = opus_encoder.encode_vec(&encode_buf, 4000).unwrap();
-            tx.send(AudioMsg{
+            let _ = tx.send(AudioMsg{
                 data: encoded,
                 player_position: audio_wrapper.player_position,
                 player_rotation: audio_wrapper.player_rotation,
@@ -152,7 +129,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                     sources.entry(id).or_insert(src);
                     let src = sources.get_mut(&id).unwrap();
                     let (posx, posy, posz) = player.position;
-                    src.set_position([posx, posy, posz]);
+                    let _ = src.set_position([posx, posy, posz]);
                 }
             }
             let data = rx.try_iter();
@@ -172,7 +149,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                     let (posx, posy, posz) = audio_wrapper.player_position;
                     let (rotx, roty, rotz) = audio_wrapper.player_rotation;
                     let data = data.data;
-                    audio_wrapper.context.set_position([-posx, -posy, -posz]);
+                    let _ = audio_wrapper.context.set_position([-posx, -posy, -posz]);
                     audio_wrapper.context.set_orientation(([1.0,1.0,1.0], [rotx, roty, rotz])).unwrap();
 
                     let mut decode = vec![0i16; 320];
@@ -189,7 +166,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                         //Pushing buffer in src
                         let mut buf = buffer_queue.pop_front().unwrap();
                         buf.set_data(&empty_buffer, 16000).unwrap();
-                        src.queue_buffer(buf);
+                        let _ = src.queue_buffer(buf);
                         //Playing sound from buffer
                         if src.state() != alto::SourceState::Playing {
                             src.play()

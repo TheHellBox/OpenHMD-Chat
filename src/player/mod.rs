@@ -1,4 +1,3 @@
-use render;
 
 use bytevec::ByteEncodable;
 use bytevec::ByteDecodable;

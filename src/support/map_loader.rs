@@ -2,9 +2,6 @@ use json;
 use rand;
 
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
-use std::ops::Index;
 use rand::Rng;
 use bytevec::{ByteEncodable, ByteDecodable};
 

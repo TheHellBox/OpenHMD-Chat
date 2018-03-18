@@ -4,25 +4,19 @@ use render::OhmdVertex;
 use glium;
 use openhmd_rs;
 use nalgebra;
-use std::mem;
 
-pub struct Draw_Display{
+pub struct DrawDisplay{
     pub display: Display
 }
 
-impl Draw_Display{
+impl DrawDisplay{
     pub fn draw(&self, buf: &render::RenderData, prog: &Program, ohmd_prog: &Program, device: &openhmd_rs::Device,camera: &render::camera::Camera,
                                                                 scr: (u32,u32), mode: &render::window::RenderMode, hmd_params: &render::HMDParams){
         use glium::Surface;
         use nalgebra::geometry::{UnitQuaternion, Quaternion};
-        use nalgebra::core::Vector4;
         let mut target = self.display.draw();
 
         let (scrw, scrh) = scr;
-        let scrsize = match mode{
-            &render::window::RenderMode::VR => scrw,
-            &render::window::RenderMode::Desktop => scrw,
-        };
 
         let params = glium::DrawParameters {
             depth: glium::Depth {
@@ -75,7 +69,7 @@ impl Draw_Display{
         let mut picking_target2 = glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(&self.display, &eye2_tex, &depthtexture2).unwrap();
         picking_target1.clear_color_and_depth((0.2, 0.2, 0.7, 1.0), 1.0);
         picking_target2.clear_color_and_depth((0.2, 0.2, 0.7, 1.0), 1.0);
-        let mut view = camera.view.to_homogeneous();
+        let view = camera.view.to_homogeneous();
         let omodelv1 = mat_to_nalg(m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX)));
         let omodelv1 = nalg_to_4x4((omodelv1* view));
 
@@ -85,7 +79,7 @@ impl Draw_Display{
         let oproj = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX));
         let oproj2 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX));
 
-        for (id, object) in &buf.render_obj_buf {
+        for (_, object) in &buf.render_obj_buf {
             if object.visible == true{
                 let (rotx, roty, rotz, rotw) = object.rotation;
                 let (sizex, sizey, sizez) = object.size;

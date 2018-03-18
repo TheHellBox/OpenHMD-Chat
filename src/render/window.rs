@@ -1,5 +1,5 @@
 
-use render::draw_display::Draw_Display;
+use render::draw_display::DrawDisplay;
 use glium::{glutin, Display};
 use glium::glutin::{ContextBuilder, EventsLoop, WindowBuilder};
 
@@ -11,13 +11,13 @@ pub enum RenderMode{
 
 pub struct Window{
     pub events_loop: EventsLoop,
-    pub display: Draw_Display,
+    pub display: DrawDisplay,
 }
 
 impl Window {
     pub fn new(sizex: u32, sizey: u32, title: &'static str, rend_mode: &RenderMode) -> Window{
 
-        let mut events_loop = glutin::EventsLoop::new();
+        let events_loop = glutin::EventsLoop::new();
 
         let window = match rend_mode{
             &RenderMode::VR => WindowBuilder::new()
@@ -35,11 +35,11 @@ impl Window {
 
         Window{
             events_loop: events_loop,
-            display: Draw_Display{display},
+            display: DrawDisplay{display},
         }
     }
 
-    pub fn get_display(&mut self) -> (&mut Draw_Display, &mut EventsLoop){
+    pub fn get_display(&mut self) -> (&mut DrawDisplay, &mut EventsLoop){
         (&mut self.display, &mut self.events_loop)
     }
 }

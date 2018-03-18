@@ -42,7 +42,7 @@ impl Network {
         config.connection_closing_threshold = Duration::from_millis(5000);
         config.connection_drop_threshold = Duration::from_millis(2000);
         config.connection_init_threshold = Duration::from_millis(2000);
-        let mut client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
+        let client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
         Network{
             client: client
         }
@@ -62,13 +62,13 @@ impl Network {
                         1 => println!("{:?}", &message[1..message.len()]),
                         2 => {
                             let player = player::Player::from_network(message[1..message.len()].to_vec());
-                            tx.send(player);
+                            let _ = tx.send(player);
                         },
                         3 => {
                             let (rotx, roty, rotz, rotw) = player.rotation;
                             let (rotx, roty, rotz) = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_euler_angles();
                             let mut data = NetAudio::from_network(message[1..message.len()].to_vec());
-                            txsound.send(AudioMsg{
+                            let _ = txsound.send(AudioMsg{
                                 data: data.data,
                                 player_position: player.position,
                                 player_rotation: (rotx, roty, rotz),
@@ -77,7 +77,7 @@ impl Network {
                         },
                         4 => {
                             let object = support::map_loader::MapObject::from_network(message[1..message.len()].to_vec());
-                            tx_mobj.send(object);
+                            let _ = tx_mobj.send(object);
                         },
                         _ => {}
                     }
