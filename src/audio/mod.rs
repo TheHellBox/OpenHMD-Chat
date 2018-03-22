@@ -132,8 +132,9 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                     let _ = src.set_position([posx, posy, posz]);
                 }
             }
-            let data = rx.try_iter();
-            for data in data{
+            let data = rx.try_iter().last();
+            if data.is_some(){
+                let data = data.unwrap();
                 let src = sources.get_mut(&data.source_id);
                 if src.is_some(){
                     let src = src.unwrap();
@@ -172,9 +173,6 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                             src.play()
                         }
                     }
-                }
-                else{
-                    println!("Looks like a bug");
                 }
             }
         }

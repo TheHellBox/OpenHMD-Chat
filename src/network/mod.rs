@@ -50,9 +50,9 @@ impl Network {
         let (tx, rx) = channel::<(Vec<u8>, u8, MessageKind)>();
         let (tx_back, rx_back) = channel::<(Vec<u8>, u8)>();
         config.connection_closing_threshold = Duration::from_millis(5000);
-        config.connection_drop_threshold = Duration::from_millis(2000);
-        config.connection_init_threshold = Duration::from_millis(2000);
-        config.send_rate = 256;
+        config.connection_drop_threshold = Duration::from_millis(5000);
+        config.connection_init_threshold = Duration::from_millis(5000);
+        config.send_rate = 1024;
         let client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
         Network{
             client: client,
