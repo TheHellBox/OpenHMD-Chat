@@ -1,3 +1,5 @@
+pub mod client_params;
+
 use player;
 use support;
 
@@ -20,6 +22,7 @@ pub struct Network {
     //                   Data  Type
     pub tx_back: mpsc::Sender<(Vec<u8>, u8)>,
     pub rx_back: mpsc::Receiver<(Vec<u8>, u8)>,
+
 }
 
 #[derive(PartialEq, Debug, Default, Clone)]
@@ -59,7 +62,7 @@ impl Network {
             tx: tx,
             rx: rx,
             tx_back: tx_back,
-            rx_back: rx_back
+            rx_back: rx_back,
         }
     }
     pub fn connect(&mut self, addr: String){
@@ -104,7 +107,7 @@ impl Network {
                         _ => {}
                     }
                 },
-                _ => println!("{:?}", event)
+                _ => {}
             }
         }
         //FIXME: Poor code... Maybe...

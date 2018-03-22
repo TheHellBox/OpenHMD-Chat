@@ -75,11 +75,12 @@ fn main(){
     {
 
         thread::spawn(move || {
+            let params = network::client_params::ClParams::new();
             let mut client = network::Network::new();
             println!("Connecting to server...");
             //Conecting to server
             client.connect(ip);
-            println!("Connected!");
+
             //Spawning player.
             let mut player = player::Player{
                 id: 0,
@@ -88,7 +89,13 @@ fn main(){
                 model: "./assets/monkey.obj".to_string(),
                 name: "None".to_string()
             };
-            client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
+
+            client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
+            println!("Sending client info...");
+            let params = params.to_network();
+            println!("Sending version");
+            client.send(params, 4, cobalt::MessageKind::Reliable);
+            println!("Starting network loop");
             let mut file_writer = support::file_writer::FileWriter::new("temp".to_string());
             loop{
                 let data = rx_orient.try_iter();
