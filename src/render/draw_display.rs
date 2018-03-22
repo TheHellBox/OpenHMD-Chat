@@ -4,6 +4,8 @@ use render::OhmdVertex;
 use glium;
 use openhmd_rs;
 use nalgebra;
+use openhmd;
+use math::*;
 
 pub struct DrawDisplay{
     pub display: Display
@@ -11,7 +13,7 @@ pub struct DrawDisplay{
 
 impl DrawDisplay{
     pub fn draw(&self, buf: &render::RenderData, prog: &Program, ohmd_prog: &Program, device: &openhmd_rs::Device,camera: &render::camera::Camera,
-                                                                scr: (u32,u32), mode: &render::window::RenderMode, hmd_params: &render::HMDParams){
+                                                                scr: (u32,u32), mode: &render::window::RenderMode, hmd_params: &openhmd::HMDParams){
         use glium::Surface;
         use nalgebra::geometry::{UnitQuaternion, Quaternion};
         let mut target = self.display.draw();
@@ -69,15 +71,14 @@ impl DrawDisplay{
         let mut picking_target2 = glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(&self.display, &eye2_tex, &depthtexture2).unwrap();
         picking_target1.clear_color_and_depth((0.2, 0.2, 0.7, 1.0), 1.0);
         picking_target2.clear_color_and_depth((0.2, 0.2, 0.7, 1.0), 1.0);
+
+
         let view = camera.view.to_homogeneous();
-        let omodelv1 = mat_to_nalg(m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX)));
-        let omodelv1 = nalg_to_4x4((omodelv1* view));
 
-        let omodelv2 = mat_to_nalg(m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX)));
-        let omodelv2 = nalg_to_4x4((omodelv2 * view));
+        let omodelv1 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX)) * view);
 
-        let oproj = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX));
-        let oproj2 = m16_to_4x4(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX));
+        let omodelv2 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX)) * view);
+
 
         for (_, object) in &buf.render_obj_buf {
             if object.visible == true{
@@ -112,7 +113,7 @@ impl DrawDisplay{
                     &mesh.mesh,
                     &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                     prog,
-                    &uniform! { matrix: matrix, perspective: oproj, view: omodelv1, tex: tex},
+                    &uniform! { matrix: matrix, perspective: hmd_params.projection1, view: omodelv1, tex: tex},
                     &params
                 ).unwrap();
                 //if mode == &render::window::RenderMode::VR {
@@ -120,7 +121,7 @@ impl DrawDisplay{
                         &mesh.mesh,
                         &glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList),
                         prog,
-                        &uniform! { matrix: matrix, perspective: oproj2, view: omodelv2, tex: tex},
+                        &uniform! { matrix: matrix, perspective: hmd_params.projection2, view: omodelv2, tex: tex},
                         &params
                     ).unwrap();
                 //}
@@ -175,43 +176,4 @@ impl DrawDisplay{
 
         target.finish().unwrap();
     }
-}
-
-fn m16_to_4x4(mat: [f32; 16]) -> [[f32;4]; 4]{
-    let mat = [
-        [mat[0], mat[1], mat[2], mat[3]],
-        [mat[4], mat[5], mat[6], mat[7]],
-        [mat[8], mat[9], mat[10], mat[11]],
-        [mat[12], mat[13], mat[14], mat[15]],
-    ];
-    mat
-}
-
-fn nalg_to_4x4(mat: nalgebra::core::MatrixN<f32, nalgebra::core::dimension::U4>) -> [[f32;4]; 4]{
-    let mat = [
-        [mat[0], mat[1], mat[2], mat[3]],
-        [mat[4], mat[5], mat[6], mat[7]],
-        [mat[8], mat[9], mat[10], mat[11]],
-        [mat[12], mat[13], mat[14], mat[15]],
-    ];
-    mat
-}
-
-fn mat_to_nalg(mat: [[f32;4]; 4]) -> nalgebra::core::MatrixN<f32, nalgebra::core::dimension::U4>{
-    let mut raw: nalgebra::core::MatrixN<f32, nalgebra::core::dimension::U4> = nalgebra::core::MatrixN::new_scaling(0.0);
-    for x in 0..4{
-        for y in 0..4{
-            raw[y*4 + x] = mat[y][x];
-        }
-    }
-    raw
-}
-fn add_matrix(mat1: [[f32;4]; 4], mat2: [[f32;4]; 4])  -> [[f32;4]; 4]{
-    let mat = [
-        [mat1[0][0] + mat2[0][0], mat1[0][1] + mat2[0][1], mat1[0][2] + mat2[0][2], mat1[0][3] + mat2[0][3]],
-        [mat1[1][0] + mat2[1][0], mat1[1][1] + mat2[1][1], mat1[1][2] + mat2[1][2], mat1[1][3] + mat2[1][3]],
-        [mat1[2][0] + mat2[2][0], mat1[2][1] + mat2[2][1], mat1[2][2] + mat2[2][2], mat1[2][3] + mat2[2][3]],
-        [mat1[3][0] + mat2[3][0], mat1[3][1] + mat2[3][1], mat1[3][2] + mat2[3][2], mat1[3][3] + mat2[3][3]],
-    ];
-    mat
 }

@@ -21,6 +21,21 @@ pub struct LocalPlayer {
     pub player_moving: bool
 }
 
+impl LocalPlayer {
+    pub fn new(pos: (f32,f32,f32)) -> LocalPlayer{
+        LocalPlayer{
+            position: pos,
+            rotation: (0.0,0.0,0.0,0.0),
+
+            player_speed_f: 0.0,
+            player_speed_lr: 0.0,
+
+            ghost_position: pos,
+            ghost_rotation: (0.0, 0.0, 1.0, 0.0),
+            player_moving: false
+        }
+    }
+}
 impl Player {
     pub fn to_network(&self) -> Vec<u8>{
         self.encode::<u8>().unwrap()

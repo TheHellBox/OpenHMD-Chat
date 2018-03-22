@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use rand;
 use rand::Rng;
+use render;
 
 #[derive(PartialEq)]
 pub enum ElementType{
@@ -91,5 +92,24 @@ impl VRGui{
     }
     pub fn remove_element(&mut self, id: u32){
         let element = self.elements.remove(&id);
+    }
+    pub fn update(&mut self, render_data: &mut render::RenderData, player_pos: (f32, f32, f32)){
+        let (posx, posy, posz) = player_pos;
+        for (_, x) in &self.elements{
+            if x.el_type == self::ElementType::Panel {
+                let (gui_posx, gui_posy) = x.position;
+                let (gui_sizex, gui_sizey) = x.size;
+                let (_, texture) = x.container.clone();
+                let object = render::RenderObject{
+                    mesh_name: "./assets/models/cube.obj".to_string(),
+                    tex_name: texture,
+                    position: (-posx + gui_posx,-posy + gui_posy,-posz - 2.0),
+                    rotation: (0.0, 0.0, 1.0, 0.0),
+                    size: (gui_sizex, gui_sizey, 0.1),
+                    visible: true
+                };
+                render_data.render_obj_buf.insert(x.rend_id, object);
+            }
+        }
     }
 }

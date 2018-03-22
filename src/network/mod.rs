@@ -4,6 +4,7 @@ use support;
 use bytevec::{ByteEncodable, ByteDecodable};
 use std::sync::mpsc;
 use audio::AudioMsg;
+use std::sync::mpsc::channel;
 
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
@@ -11,7 +12,10 @@ use cobalt::{
 };
 
 pub struct Network {
-    client: Client<UdpSocket, BinaryRateLimiter, NoopPacketModifier>
+    client: Client<UdpSocket, BinaryRateLimiter, NoopPacketModifier>,
+    //                   Data  Type  MessageKind
+    pub tx: mpsc::Sender<(Vec<u8>, u8, MessageKind)>,
+    pub rx: mpsc::Receiver<(Vec<u8>, u8, MessageKind)>,
 }
 
 #[derive(PartialEq, Debug, Default, Clone)]
@@ -39,18 +43,22 @@ impl Network {
         use std::time::Duration;
 
         let mut config = Config::default();
+        let (tx, rx) = channel::<(Vec<u8>, u8, MessageKind)>();
+
         config.connection_closing_threshold = Duration::from_millis(5000);
         config.connection_drop_threshold = Duration::from_millis(2000);
         config.connection_init_threshold = Duration::from_millis(2000);
         let client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
         Network{
-            client: client
+            client: client,
+            tx: tx,
+            rx: rx
         }
     }
     pub fn connect(&mut self, addr: String){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
-    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, tx_mobj: &mpsc::Sender<support::map_loader::MapObject>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player) {
+    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, tx_mobj: &mpsc::Sender<support::map_loader::MapObject>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player) -> (Option<Vec<u8>>){
         use nalgebra::geometry::UnitQuaternion;
         use nalgebra::geometry::Quaternion;
 
@@ -79,19 +87,35 @@ impl Network {
                             let object = support::map_loader::MapObject::from_network(message[1..message.len()].to_vec());
                             let _ = tx_mobj.send(object);
                         },
+                        5 => {
+                            let msg = message[1..message.len()].to_vec();
+                            return Some(msg)
+                        },
                         _ => {}
                     }
                 },
                 _ => println!("{:?}", event)
             }
         }
+        //FIXME: Poor code... Maybe...
+        let mut msgs = vec![];
+        {
+            for x in self.rx.try_iter(){
+                msgs.push(x);
+            }
+        }
+        for x in msgs{
+            let (data, type_d, msgk) = x;
+            self.send(data, type_d, msgk);
+        }
         self.client.send(true).is_ok();
+        None
     }
 
-    pub fn send(&mut self, msg: Vec<u8>, type_d: u8){
+    pub fn send(&mut self, msg: Vec<u8>, type_d: u8, type_m: MessageKind){
         let mut msg = msg;
         msg.insert(0, type_d);
         let conn = self.client.connection().unwrap();
-        conn.send(MessageKind::Instant, msg);
+        conn.send(type_m, msg);
     }
 }

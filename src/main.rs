@@ -20,6 +20,8 @@ mod player;
 mod audio;
 mod vr_gui;
 mod gameplay;
+mod openhmd;
+mod math;
 
 use render::window::Window;
 
@@ -36,6 +38,8 @@ fn main(){
     use gilrs::{Gilrs};
     use audio::AudioMsg;
     use render::window::RenderMode;
+    use std::io::prelude::*;
+    use std::fs::File;
 
     //Some other stuff...
     let args: Vec<_> = env::args().collect();
@@ -83,7 +87,9 @@ fn main(){
                 model: "./assets/monkey.obj".to_string(),
                 name: "None".to_string()
             };
-            client.send(player.to_network(), 2);
+            client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
+            let mut curretfile = String::new();
+            let mut state = false;
             loop{
                 let data = rx_orient.try_iter();
                 for data in data{
@@ -98,56 +104,53 @@ fn main(){
                         data: netsound.data,
                         id: player.id
                     };
-                    client.send(data.to_network(), 3);
+                    client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
                 }
-                client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
-                client.send(player.to_network(), 2);
+                let file_vec = client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
+                /*if file_vec.is_some(){
+                    let file_vec = file_vec.unwrap();
+                    if file_vec == vec![100, 137] {
+
+                    }
+                    if file_vec[0] == 233{
+                        state = true;
+                        curretfile = String::from_utf8(file_vec[1..file_vec.len()].to_vec()).unwrap();
+                        println!("Downloading {}", curretfile);
+                        let mut f = File::create(curretfile).unwrap();
+                        //FIXME: For some reason, I think this code is really bad
+                        loop{
+                            let file_vec = client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
+                            if file_vec.is_some(){
+                                let file_vec = file_vec.unwrap();
+                                if file_vec == vec![243]{
+                                    break;
+                                }
+                                else{
+                                    f.write_all(file_vec.as_slice());
+                                }
+                            }
+                        }
+                    }
+                }*/
             }
         });
     }
-    //Init OpenHMD
-    println!("VR mode");
-    let ohmd_context = openhmd_rs::Context::new();
-    ohmd_context.probe();
-    println!("Opening device 0...");
-    let ohmd_device = ohmd_context.list_open_device(hmdid);
 
-    ohmd_context.update();
+    //Init OpenHMD
+    let hmd = openhmd::ohmdHeadSet::new(hmdid);
+
+    hmd.context.update();
 
     println!("\nDevice description: ");
-    println!("Vendor:   {}", ohmd_context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_VENDOR));
-    println!("Product:  {}", ohmd_context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_PRODUCT));
-    println!("Path:     {}\n", ohmd_context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_PATH));
+    println!("Vendor:   {}", hmd.context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_VENDOR));
+    println!("Product:  {}", hmd.context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_PRODUCT));
+    println!("Path:     {}\n", hmd.context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_PATH));
 
-    scrw = ohmd_device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_HORIZONTAL_RESOLUTION) as u32;
-    scrh = ohmd_device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_VERTICAL_RESOLUTION) as u32;
+    let hmd_params = hmd.gen_cfg();
 
-    // Calculating HMD params
-
-    let scr_size_w = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_HORIZONTAL_SIZE)[0];
-    let scr_size_h = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_VERTICAL_SIZE )[0];
-    let distortion_k = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_DISTORTION_K );
-    let aberration_k = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_ABERRATION_K );
-
-    let view_port_scale = [scr_size_w / 2.0, scr_size_h];
-
-    let sep = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_HORIZONTAL_SEPARATION )[0];
-    let mut left_lens_center: [f32; 2] = [0.0, ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION)[0]];
-    let mut right_lens_center: [f32; 2] = [0.0, ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION)[0]];
-
-    left_lens_center[0] = view_port_scale[0] - sep/2.0;
-    right_lens_center[0] = sep/2.0;
-
-    let hmd_params = render::HMDParams{
-        scr_size_w: scr_size_w,
-        scr_size_h: scr_size_h,
-        left_lens_center: left_lens_center,
-        right_lens_center: right_lens_center,
-        view_port_scale: view_port_scale,
-        distortion_k: [distortion_k[0], distortion_k[1], distortion_k[2], distortion_k[3]],
-        aberration_k: [aberration_k[0], aberration_k[1], aberration_k[2]]
-    };
-
+    let (h_scr_w, h_scr_h) = hmd_params.scr_res;
+    scrw = h_scr_w;
+    scrw = h_scr_h;
     println!("HMD scrw res {}", scrw);
     println!("HMD scrh res {}", scrh);
 
@@ -194,30 +197,19 @@ fn main(){
     let posy = 0.0;
     let posz = rand::thread_rng().gen_range(-7.0, 7.0);
 
-    let mut local_player = player::LocalPlayer{
-        position: (posx,posy,posz),
-        rotation: (0.0,0.0,0.0,0.0),
-
-        player_speed_f: 0.0,
-        player_speed_lr: 0.0,
-
-        ghost_position: (posx, posy, posz),
-        ghost_rotation: (0.0, 0.0, 1.0, 0.0),
-        player_moving: false
-    };
+    let mut local_player = player::LocalPlayer::new((posx,posy,posz));
 
     // Audio stuff
-
     thread::spawn(move || {
         audio::start_audio(&tx_netsound_in,&rx_netsound_out, &rx_players);
     });
 
     //Starting main loop
     loop{
-        ohmd_context.update();
+        let sys_time = SystemTime::now();
+        hmd.context.update();
         let map_objects = rx_mapobj.try_iter();
         for x in map_objects{
-            println!("{:?}", x);
             let mut new_object = render::RenderObject{
                 mesh_name: x.model.clone(),
                 tex_name: x.texture.clone(),
@@ -228,15 +220,15 @@ fn main(){
             };
             render_data.render_obj_buf.insert(rand::thread_rng().gen_range(10000, 900000), new_object);
         }
-        let sys_time = SystemTime::now();
         let (posx, posy, posz) = local_player.position;
 
-        let ohmd_orient = ohmd_device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
-        //ohmd_device.setf(openhmd_rs::ohmd_float_value::OHMD_POSITION_VECTOR, ohmd_pos)
+        let ohmd_orient = hmd.device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
         let quat = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[1], ohmd_orient[2], -ohmd_orient[3]));
 
         local_player.rotation = (quat[0],quat[1],quat[2],quat[3]);
+
         gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat);
+
         let data = rx_player.try_iter();
         for data in data{
             let (x,y,z,w) = data.rotation;
@@ -253,27 +245,12 @@ fn main(){
             let _ = tx_players.send(playerlist.clone());
         }
 
-        for (_, x) in &vr_gui.elements{
-            if x.el_type == vr_gui::ElementType::Panel {
-                let (gui_posx, gui_posy) = x.position;
-                let (gui_sizex, gui_sizey) = x.size;
-                let (_, texture) = x.container.clone();
-                let object = render::RenderObject{
-                    mesh_name: "./assets/models/cube.obj".to_string(),
-                    tex_name: texture,
-                    position: (-posx + gui_posx,-posy + gui_posy,-posz - 2.0),
-                    rotation: (0.0, 0.0, 1.0, 0.0),
-                    size: (gui_sizex, gui_sizey, 0.1),
-                    visible: settings_active
-                };
-                render_data.render_obj_buf.insert(x.rend_id, object);
-            }
-        }
+        vr_gui.update(&mut render_data, local_player.position);
 
         camera.set_pos(nalgebra::Vector3::new(posx,posy,posz));
 
         //Render
-        display.draw(&render_data, &program, &ohmd_dis_shaders, &ohmd_device, &camera, (scrw, scrh), &vrmode, &hmd_params);
+        display.draw(&render_data, &program, &ohmd_dis_shaders, &hmd.device, &camera, (scrw, scrh), &vrmode, &hmd_params);
 
         let _ = tx_orient.send(((quat[0],quat[1],quat[2],quat[3]), (posx,posy,posz)));
         let elapsed = sys_time.elapsed().unwrap();

@@ -38,16 +38,6 @@ pub struct RenderData{
     pub render_obj_buf: HashMap<u32, RenderObject>,
 }
 
-pub struct HMDParams{
-    pub scr_size_w: f32,
-    pub scr_size_h: f32,
-    pub left_lens_center: [f32; 2],
-    pub right_lens_center: [f32; 2],
-    pub view_port_scale: [f32; 2],
-    pub distortion_k: [f32; 4],
-    pub aberration_k: [f32; 3]
-}
-
 pub const SHADER_SIMPLE_FRAG: &'static str = r#"
 #version 140
 in vec3 v_normal;
