@@ -40,7 +40,7 @@ fn main(){
     use render::window::RenderMode;
     use std::io::prelude::*;
     use std::fs::File;
-
+    use std::sync::mpsc::sync_channel;
     //Some other stuff...
     let args: Vec<_> = env::args().collect();
     let mut scrw: u32 = 1024;
@@ -109,27 +109,21 @@ fn main(){
                 client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
                 let back_data = client.rx_back.try_iter();
                 for (x, type_d) in back_data{
-                    if type_d == 0{
-                        if x.starts_with(&vec![233, 144, 122, 198, 134, 253, 251]){
-                            file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[7..x.len()].to_vec()).unwrap());
-                        }
-                        else if x.starts_with(&vec![100, 137, 211, 233, 212, 222]){
-                            tx_ready.send(1);
-                        }
-                        else{
-                            file_writer.write((&x).to_owned());
-                        }
+                    if x.starts_with(&vec![233, 144, 122, 198, 134, 253, 251]){
+                        file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[7..x.len()].to_vec()).unwrap());
+                        println!("Downloading {}", String::from_utf8(x[7..x.len()].to_vec()).unwrap());
+                    }
+                    else if x.starts_with(&vec![100, 137, 211, 233, 212, 222]){
+                        tx_ready.send(1);
+                    }
+                    else{
+                        file_writer.write((&x).to_owned());
                     }
                 }
             }
         });
     }
-    loop{
-        let data = rx_ready.try_iter();
-        if data.count() > 0{
-            break
-        }
-    }
+    let data = rx_ready.recv();
     //Init OpenHMD
     let hmd = openhmd::ohmdHeadSet::new(hmdid);
 
@@ -195,7 +189,10 @@ fn main(){
 
     // Audio stuff
     thread::spawn(move || {
-        audio::start_audio(&tx_netsound_in,&rx_netsound_out, &rx_players);
+        audio::start_audio_capture(&tx_netsound_in);
+    });
+    thread::spawn(move || {
+        audio::start_audio_playback(&rx_netsound_out, &rx_players);
     });
 
     //Starting main loop

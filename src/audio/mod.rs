@@ -85,20 +85,18 @@ impl AudioStaticSource{
 
 }
 
-pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Receiver<HashMap<u32, player::Player>>){
+pub fn start_audio_capture(tx: &mpsc::Sender<AudioMsg>){
     //WARNING: Very poor code
     use std::collections::{VecDeque, HashMap};
+    use std::thread;
     println!("Init audio_wrapper");
     let audio_wrapper = AudioWrapper::new();
     if audio_wrapper.is_ok(){
         let mut opus_encoder = opus::Encoder::new(16000, opus::Channels::Mono, opus::Application::Voip).unwrap();
-        let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
 
         let mut audio_wrapper = audio_wrapper.unwrap();
 
-        let mut sources = HashMap::new();
-
-        let mut buffer_queue : VecDeque<alto::Buffer> = VecDeque::<alto::Buffer>::new();
+        let mut buffer: Vec<alto::Mono<i16>> = vec![alto::Mono::<i16> { center : 0 }; 320 as usize];
 
         audio_wrapper.start_capture();
 
@@ -115,13 +113,30 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
 
             //Opus encoding
             let encode_buf = buffer.iter().map(|&x| x.center).collect::<Vec<_>>();
-            let encoded = opus_encoder.encode_vec(&encode_buf, 4000).unwrap();
-            let _ = tx.send(AudioMsg{
+            let encoded = opus_encoder.encode_vec(&encode_buf, 16000).unwrap();
+            tx.send(AudioMsg{
                 data: encoded,
                 player_position: audio_wrapper.player_position,
                 player_rotation: audio_wrapper.player_rotation,
                 source_id: 0,
             });
+            thread::sleep_ms(5);
+        }
+    }
+}
+
+pub fn start_audio_playback(rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Receiver<HashMap<u32, player::Player>>){
+    use std::collections::{VecDeque, HashMap};
+    use std::thread;
+    let audio_wrapper = AudioWrapper::new();
+    let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
+    let mut sources = HashMap::new();
+    let mut buffer_queue : VecDeque<alto::Buffer> = VecDeque::<alto::Buffer>::new();
+    if audio_wrapper.is_ok(){
+        let mut audio_wrapper = audio_wrapper.unwrap();
+        let mut src = audio_wrapper.create_static_source().unwrap().source;
+        sources.insert(0, src);
+        loop{
             let playerslist = rx_players.try_iter();
             for x in playerslist{
                 for (id, player) in x{
@@ -129,7 +144,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                     sources.entry(id).or_insert(src);
                     let src = sources.get_mut(&id).unwrap();
                     let (posx, posy, posz) = player.position;
-                    let _ = src.set_position([posx, posy, posz]);
+                    src.set_position([posx, posy, posz]);
                 }
             }
             let data = rx.try_iter().last();
@@ -150,7 +165,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                     let (posx, posy, posz) = audio_wrapper.player_position;
                     let (rotx, roty, rotz) = audio_wrapper.player_rotation;
                     let data = data.data;
-                    let _ = audio_wrapper.context.set_position([-posx, -posy, -posz]);
+                    audio_wrapper.context.set_position([-posx, -posy, -posz]);
                     audio_wrapper.context.set_orientation(([1.0,1.0,1.0], [rotx, roty, rotz])).unwrap();
 
                     let mut decode = vec![0i16; 320];
@@ -167,7 +182,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                         //Pushing buffer in src
                         let mut buf = buffer_queue.pop_front().unwrap();
                         buf.set_data(&empty_buffer, 16000).unwrap();
-                        let _ = src.queue_buffer(buf);
+                        src.queue_buffer(buf);
                         //Playing sound from buffer
                         if src.state() != alto::SourceState::Playing {
                             src.play()
@@ -175,6 +190,7 @@ pub fn start_audio(tx: &mpsc::Sender<AudioMsg>, rx: &mpsc::Receiver<AudioMsg>, r
                     }
                 }
             }
+            thread::sleep_ms(5);
         }
     }
 }
