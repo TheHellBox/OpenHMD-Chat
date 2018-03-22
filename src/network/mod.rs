@@ -52,6 +52,7 @@ impl Network {
         config.connection_closing_threshold = Duration::from_millis(5000);
         config.connection_drop_threshold = Duration::from_millis(2000);
         config.connection_init_threshold = Duration::from_millis(2000);
+        config.send_rate = 256;
         let client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
         Network{
             client: client,

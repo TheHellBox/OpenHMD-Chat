@@ -71,6 +71,7 @@ fn main(){
     let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
     let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
     let (tx_netsound_out, rx_netsound_out) = channel::<AudioMsg>();
+    let (tx_ready, rx_ready) = channel::<u8>();
     {
 
         thread::spawn(move || {
@@ -108,17 +109,27 @@ fn main(){
                 client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
                 let back_data = client.rx_back.try_iter();
                 for (x, type_d) in back_data{
-                    if x[0] == 233{
-                        file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[1..x.len()].to_vec()).unwrap());
-                    }
-                    else{
-                        file_writer.write(x);
+                    if type_d == 0{
+                        if x.starts_with(&vec![233, 144, 122, 198, 134, 253, 251]){
+                            file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[7..x.len()].to_vec()).unwrap());
+                        }
+                        else if x.starts_with(&vec![100, 137, 211, 233, 212, 222]){
+                            tx_ready.send(1);
+                        }
+                        else{
+                            file_writer.write((&x).to_owned());
+                        }
                     }
                 }
             }
         });
     }
-    thread::sleep_ms(10_000);
+    loop{
+        let data = rx_ready.try_iter();
+        if data.count() > 0{
+            break
+        }
+    }
     //Init OpenHMD
     let hmd = openhmd::ohmdHeadSet::new(hmdid);
 
