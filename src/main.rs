@@ -212,7 +212,7 @@ fn main(){
                 size: (1.0, 1.0, 1.0),
                 visible: true
             };
-            println!("{:?}", new_object);
+            println!("{:?}", x);
             render_data.render_obj_buf.insert(rand::thread_rng().gen_range(10000, 900000), new_object);
         }
         let (posx, posy, posz) = local_player.position;
