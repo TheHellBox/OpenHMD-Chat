@@ -16,6 +16,10 @@ pub struct Network {
     //                   Data  Type  MessageKind
     pub tx: mpsc::Sender<(Vec<u8>, u8, MessageKind)>,
     pub rx: mpsc::Receiver<(Vec<u8>, u8, MessageKind)>,
+
+    //                   Data  Type
+    pub tx_back: mpsc::Sender<(Vec<u8>, u8)>,
+    pub rx_back: mpsc::Receiver<(Vec<u8>, u8)>,
 }
 
 #[derive(PartialEq, Debug, Default, Clone)]
@@ -44,7 +48,7 @@ impl Network {
 
         let mut config = Config::default();
         let (tx, rx) = channel::<(Vec<u8>, u8, MessageKind)>();
-
+        let (tx_back, rx_back) = channel::<(Vec<u8>, u8)>();
         config.connection_closing_threshold = Duration::from_millis(5000);
         config.connection_drop_threshold = Duration::from_millis(2000);
         config.connection_init_threshold = Duration::from_millis(2000);
@@ -52,13 +56,15 @@ impl Network {
         Network{
             client: client,
             tx: tx,
-            rx: rx
+            rx: rx,
+            tx_back: tx_back,
+            rx_back: rx_back
         }
     }
     pub fn connect(&mut self, addr: String){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
-    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, tx_mobj: &mpsc::Sender<support::map_loader::MapObject>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player) -> (Option<Vec<u8>>){
+    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, tx_mobj: &mpsc::Sender<support::map_loader::MapObject>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player){
         use nalgebra::geometry::UnitQuaternion;
         use nalgebra::geometry::Quaternion;
 
@@ -72,6 +78,7 @@ impl Network {
                             let player = player::Player::from_network(message[1..message.len()].to_vec());
                             let _ = tx.send(player);
                         },
+                        //Sound
                         3 => {
                             let (rotx, roty, rotz, rotw) = player.rotation;
                             let (rotx, roty, rotz) = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_euler_angles();
@@ -83,13 +90,15 @@ impl Network {
                                 source_id: data.id,
                             });
                         },
+                        //Map object
                         4 => {
                             let object = support::map_loader::MapObject::from_network(message[1..message.len()].to_vec());
                             let _ = tx_mobj.send(object);
                         },
+                        //Write file
                         5 => {
                             let msg = message[1..message.len()].to_vec();
-                            return Some(msg)
+                            self.tx_back.send((msg, 0));
                         },
                         _ => {}
                     }
@@ -109,7 +118,6 @@ impl Network {
             self.send(data, type_d, msgk);
         }
         self.client.send(true).is_ok();
-        None
     }
 
     pub fn send(&mut self, msg: Vec<u8>, type_d: u8, type_m: MessageKind){

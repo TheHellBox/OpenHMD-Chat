@@ -88,8 +88,7 @@ fn main(){
                 name: "None".to_string()
             };
             client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
-            let mut curretfile = String::new();
-            let mut state = false;
+            let mut file_writer = support::file_writer::FileWriter::new("temp".to_string());
             loop{
                 let data = rx_orient.try_iter();
                 for data in data{
@@ -106,36 +105,20 @@ fn main(){
                     };
                     client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
                 }
-                let file_vec = client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
-                /*if file_vec.is_some(){
-                    let file_vec = file_vec.unwrap();
-                    if file_vec == vec![100, 137] {
-
+                client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
+                let back_data = client.rx_back.try_iter();
+                for (x, type_d) in back_data{
+                    if x[0] == 233{
+                        file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[1..x.len()].to_vec()).unwrap());
                     }
-                    if file_vec[0] == 233{
-                        state = true;
-                        curretfile = String::from_utf8(file_vec[1..file_vec.len()].to_vec()).unwrap();
-                        println!("Downloading {}", curretfile);
-                        let mut f = File::create(curretfile).unwrap();
-                        //FIXME: For some reason, I think this code is really bad
-                        loop{
-                            let file_vec = client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
-                            if file_vec.is_some(){
-                                let file_vec = file_vec.unwrap();
-                                if file_vec == vec![243]{
-                                    break;
-                                }
-                                else{
-                                    f.write_all(file_vec.as_slice());
-                                }
-                            }
-                        }
+                    else{
+                        file_writer.write(x);
                     }
-                }*/
+                }
             }
         });
     }
-
+    thread::sleep_ms(10_000);
     //Init OpenHMD
     let hmd = openhmd::ohmdHeadSet::new(hmdid);
 
