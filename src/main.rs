@@ -12,6 +12,7 @@ pub extern crate gilrs;
 pub extern crate alto;
 pub extern crate opus;
 pub extern crate json;
+pub extern crate ncollide;
 
 mod render;
 mod support;
@@ -34,13 +35,12 @@ fn main(){
     use std::collections::HashMap;
     use std::time::SystemTime;
     use std::thread;
-    use std::sync::mpsc::channel;
+    use std::sync::mpsc::{channel, sync_channel};
     use gilrs::{Gilrs};
     use audio::AudioMsg;
     use render::window::RenderMode;
     use std::io::prelude::*;
     use std::fs::File;
-    use std::sync::mpsc::sync_channel;
     //Some other stuff...
     let args: Vec<_> = env::args().collect();
     let mut scrw: u32 = 1024;
@@ -50,6 +50,7 @@ fn main(){
             args[1].clone()
         }
         else{
+            println!("Please, enter IP. Example: ./openhmdchat ip:port");
             "127.0.0.1:4587".to_string()
         }
     };
@@ -64,14 +65,15 @@ fn main(){
             0
         }
     };
-    //Create communication channels
+    //Create communication channels. FIXME: Move all this MPSC stuff away from main
     let (tx_player, rx_player) = channel::<player::Player>();
     let (tx_mapobj, rx_mapobj) = channel::<support::map_loader::MapObject>();
     let (tx_players, rx_players) = channel::<HashMap<u32, player::Player>>();
     let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
     let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
     let (tx_netsound_out, rx_netsound_out) = channel::<AudioMsg>();
-    let (tx_ready, rx_ready) = channel::<u8>();
+    let (tx_ready, rx_ready) = channel::<bool>();
+    //FIXME: Move network thread from main to other module, it takes a lot of code
     {
 
         thread::spawn(move || {
@@ -93,9 +95,7 @@ fn main(){
             client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
             println!("Sending client info...");
             let params = params.to_network();
-            println!("Sending version");
             client.send(params, 4, cobalt::MessageKind::Reliable);
-            println!("Starting network loop");
             let mut file_writer = support::file_writer::FileWriter::new("temp".to_string());
             loop{
                 let data = rx_orient.try_iter();
@@ -121,7 +121,7 @@ fn main(){
                         println!("Downloading {}", String::from_utf8(x[7..x.len()].to_vec()).unwrap());
                     }
                     else if x.starts_with(&vec![100, 137, 211, 233, 212, 222]){
-                        tx_ready.send(1);
+                        tx_ready.send(true);
                     }
                     else{
                         file_writer.write((&x).to_owned());
@@ -133,19 +133,11 @@ fn main(){
     let data = rx_ready.recv();
     //Init OpenHMD
     let hmd = openhmd::ohmdHeadSet::new(hmdid);
-
     hmd.context.update();
-
-    println!("\nDevice description: ");
-    println!("Vendor:   {}", hmd.context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_VENDOR));
-    println!("Product:  {}", hmd.context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_PRODUCT));
-    println!("Path:     {}\n", hmd.context.list_gets(hmdid, openhmd_rs::ohmd_string_value::OHMD_PATH));
-
     let hmd_params = hmd.gen_cfg();
-
     let (h_scr_w, h_scr_h) = hmd_params.scr_res;
     scrw = h_scr_w;
-    scrw = h_scr_h;
+    scrh = h_scr_h;
     println!("HMD scrw res {}", scrw);
     println!("HMD scrh res {}", scrh);
 

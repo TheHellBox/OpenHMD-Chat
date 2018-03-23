@@ -23,7 +23,13 @@ impl ohmdHeadSet{
         println!("VR mode");
         let ohmd_context = openhmd_rs::Context::new();
         ohmd_context.probe();
-        println!("Opening device 0...");
+
+        println!("\nDevice description: ");
+        println!("Vendor:   {}", ohmd_context.list_gets(id, openhmd_rs::ohmd_string_value::OHMD_VENDOR));
+        println!("Product:  {}", ohmd_context.list_gets(id, openhmd_rs::ohmd_string_value::OHMD_PRODUCT));
+        println!("Path:     {}\n", ohmd_context.list_gets(id, openhmd_rs::ohmd_string_value::OHMD_PATH));
+        println!("Opening device {}...", id);
+
         let ohmd_device = ohmd_context.list_open_device(id);
         ohmdHeadSet{
             context: ohmd_context,

@@ -1,3 +1,5 @@
+pub mod controls;
+
 use gilrs;
 use render;
 use player;
@@ -8,41 +10,7 @@ use render::window::RenderMode;
 
 pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer, render_data: &mut render::RenderData, orient: &UnitQuaternion<f32>){
     let matrix = UnitQuaternion::from_quaternion(Quaternion::new(-orient[0], -orient[1], orient[2], orient[3])).to_homogeneous();
-    while let Some(event) = gamepad.next_event() {
-        match event {
-            Event { id, event: EventType::AxisChanged(gilrs::ev::Axis::LeftStickY, val1, val2), .. } => {
-                if val1 > 0.1{
-                    local_player.player_speed_f = 0.1 * val1;
-                }
-                else if val1 < -0.1{
-                    local_player.player_speed_f = 0.1 * val1;
-                }
-                else if (val1 > -0.1) & (val1 < 0.1){
-                    local_player.player_speed_f = 0.0;
-                }
-
-            }
-            Event { id, event: EventType::AxisChanged(gilrs::ev::Axis::LeftStickX, val1, val2), .. } => {
-                if val1 > 0.1{
-                    local_player.player_speed_lr = 0.1 * val1;
-                }
-                else if val1 < -0.1{
-                    local_player.player_speed_lr = 0.1 * val1;
-                }
-                else if (val1 > -0.1) & (val1 < 0.1){
-                    local_player.player_speed_lr = 0.0;
-                }
-            }
-            Event { id, event: EventType::ButtonPressed(gilrs::ev::Button::Start, val1), .. } => {
-                //settings_active = match settings_active{
-                //    false => true,
-                //    true => false,
-                //};
-            }
-            _ => (),
-        };
-    }
-
+    controls::move_player(gamepad, local_player);
     let (posr_x,posr_y,posr_z) = (local_player.player_speed_f * 100.0,0.0, local_player.player_speed_lr * 100.0);
     let ghost_rot_next = UnitQuaternion::look_at_lh(&Vector3::new(posr_x, 0.0, posr_z), &Vector3::new(0.0,1.0,0.0)) * orient;
     local_player.ghost_rotation = (ghost_rot_next[0], ghost_rot_next[1], ghost_rot_next[2], ghost_rot_next[3]);
