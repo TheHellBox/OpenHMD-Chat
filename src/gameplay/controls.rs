@@ -1,8 +1,9 @@
 use player;
 use gilrs;
 use gilrs::{Event, EventType};
-
-pub fn move_player(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer){
+use glium::glutin::EventsLoop;
+use glium::glutin;
+pub fn move_player(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer, ev_loop: &mut EventsLoop){
     while let Some(event) = gamepad.next_event() {
         match event {
             Event { id, event: EventType::AxisChanged(gilrs::ev::Axis::LeftStickY, val1, val2), .. } => {
@@ -37,4 +38,59 @@ pub fn move_player(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalP
             _ => (),
         };
     }
+
+    ev_loop.poll_events(|ev| {
+        match ev {
+            glutin::Event::WindowEvent { event, .. } => match event {
+                glutin::WindowEvent::KeyboardInput {device_id: _, input: input} => {
+                    println!("scan {:?}", input.scancode);
+                    match input.scancode{
+                        17 => {
+                            match input.state{
+                                glutin::ElementState::Pressed => {
+                                    local_player.player_speed_f = 0.1;
+                                }
+                                glutin::ElementState::Released => {
+                                    local_player.player_speed_f = 0.0;
+                                }
+                            }
+                        },
+                        31 => {
+                            match input.state{
+                                glutin::ElementState::Pressed => {
+                                    local_player.player_speed_f = -0.1;
+                                }
+                                glutin::ElementState::Released => {
+                                    local_player.player_speed_f = 0.0;
+                                }
+                            }
+                        },
+                        30 => {
+                            match input.state{
+                                glutin::ElementState::Pressed => {
+                                    local_player.player_speed_lr = -0.1;
+                                }
+                                glutin::ElementState::Released => {
+                                    local_player.player_speed_lr = 0.0;
+                                }
+                            }
+                        },
+                        32 => {
+                            match input.state{
+                                glutin::ElementState::Pressed => {
+                                    local_player.player_speed_lr = 0.1;
+                                }
+                                glutin::ElementState::Released => {
+                                    local_player.player_speed_lr = 0.0;
+                                }
+                            }
+                        },
+                        _ => {}
+                    }
+                },
+                _ => (),
+            },
+            _ => (),
+        }
+    });
 }

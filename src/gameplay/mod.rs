@@ -10,11 +10,13 @@ use nalgebra::geometry::{Quaternion, UnitQuaternion};
 use nalgebra::core::Vector3;
 use gilrs::{Event, EventType};
 use render::window::RenderMode;
+use glium::glutin::EventsLoop;
 
 pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer, render_data: &mut render::RenderData, orient: &UnitQuaternion<f32>,
-                dbvt: &mut ncollide::partitioning::DBVT<nalgebra::Point3<f32>, nalgebra::Isometry3<f32>, ncollide::bounding_volume::BoundingSphere<nalgebra::Point3<f32>>>){
+                dbvt: &mut ncollide::partitioning::DBVT<nalgebra::Point3<f32>, nalgebra::Isometry3<f32>, ncollide::bounding_volume::BoundingSphere<nalgebra::Point3<f32>>>,
+                ev_loop: &mut EventsLoop){
     let matrix = UnitQuaternion::from_quaternion(Quaternion::new(orient[0], orient[1], orient[2], orient[3])).to_homogeneous();
-    controls::move_player(gamepad, local_player);
+    controls::move_player(gamepad, local_player, ev_loop);
 
     if (local_player.player_speed_f == 0.0) & (local_player.player_speed_lr == 0.0){
         local_player.player_moving = false;

@@ -147,7 +147,7 @@ fn main(){
     println!("Opening window...");
     let mut window = Window::new(scrw,scrh, "test", &vrmode);
 
-    let (display, events_loop) = window.get_display();
+    let (display, mut events_loop) = window.get_display();
     //Building shaders
     println!("Building shaders...");
     let program = glium::Program::from_source(&display.display, &render::SHADER_SIMPLE_VERT, &render::SHADER_SIMPLE_FRAG, None).unwrap();
@@ -230,7 +230,7 @@ fn main(){
 
         local_player.rotation = (quat[0],quat[1],quat[2],quat[3]);
 
-        gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat, &mut dbvt);
+        gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat, &mut dbvt, &mut events_loop);
 
         let data = rx_player.try_iter();
         for data in data{
