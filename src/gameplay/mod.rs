@@ -13,7 +13,7 @@ use render::window::RenderMode;
 use glium::glutin::EventsLoop;
 
 pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer, render_data: &mut render::RenderData, orient: &UnitQuaternion<f32>,
-                dbvt: &mut ncollide::partitioning::DBVT<nalgebra::Point3<f32>, nalgebra::Isometry3<f32>, ncollide::bounding_volume::BoundingSphere<nalgebra::Point3<f32>>>,
+                dbvt: &mut ncollide::partitioning::DBVT<nalgebra::Point3<f32>, (nalgebra::Isometry3<f32>, (f32, f32, f32)), ncollide::bounding_volume::BoundingSphere<nalgebra::Point3<f32>>>,
                 ev_loop: &mut EventsLoop){
     let matrix = UnitQuaternion::from_quaternion(Quaternion::new(orient[0], orient[1], orient[2], orient[3])).to_homogeneous();
     controls::move_player(gamepad, local_player, ev_loop);
@@ -38,16 +38,13 @@ pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer
             dbvt.visit(&mut visitor);
         }
         println!("{:?}", collector);
-
-        println!("posx_ghost {}", posx_ghost);
-        println!("posz_ghost {}", posz_ghost);
-        let ghost_rot_next = UnitQuaternion::look_at_rh(&Vector3::new(posz_ghost, 0.0, posx_ghost), &Vector3::new(0.0,1.0,0.0));
+        let ghost_rot_next = UnitQuaternion::look_at_rh(&Vector3::new(posz_ghost, 0.0, posx_ghost), &Vector3::new(0.0,-1.0,0.0));
         local_player.ghost_rotation = (ghost_rot_next[0] * 2.0, ghost_rot_next[1], ghost_rot_next[2] * 2.0, ghost_rot_next[3]);
 
         local_player.ghost_position.1 = {
             let x = collector.last();
             if x.is_some(){
-                x.unwrap().translation.vector[1] + 1.0
+                x.unwrap().0.translation.vector[1] + (x.unwrap().1).1 + 1.0
             }
             else{
                 0.0

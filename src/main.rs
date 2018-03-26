@@ -218,7 +218,7 @@ fn main(){
                 let cube = ncollide::shape::Cuboid::new(nalgebra::Vector3::new(x.scale.0, x.scale.1, x.scale.2));
                 let pos = nalgebra::Isometry3::new(nalgebra::Vector3::new(x.position.0, x.position.1, x.position.2), nalgebra::zero());
                 let bound_vol = ncollide::bounding_volume::bounding_sphere::<nalgebra::Point3<f32>, _, _>(&cube, &pos);
-                let dbvt_leaf = ncollide::partitioning::DBVTLeaf::new(bound_vol, pos);
+                let dbvt_leaf = ncollide::partitioning::DBVTLeaf::new(bound_vol, (pos, x.scale));
                 dbvt.insert(dbvt_leaf);
                 println!("{:?}", x);
             }
