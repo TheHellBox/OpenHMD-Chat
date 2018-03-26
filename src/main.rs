@@ -113,6 +113,7 @@ fn main(){
                     };
                     client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
                 }
+                client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
                 client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
                 let back_data = client.rx_back.try_iter();
                 for (x, type_d) in back_data{

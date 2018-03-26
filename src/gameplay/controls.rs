@@ -43,7 +43,6 @@ pub fn move_player(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalP
         match ev {
             glutin::Event::WindowEvent { event, .. } => match event {
                 glutin::WindowEvent::KeyboardInput {device_id: _, input: input} => {
-                    println!("scan {:?}", input.scancode);
                     match input.scancode{
                         17 => {
                             match input.state{

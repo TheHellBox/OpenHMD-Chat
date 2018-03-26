@@ -37,7 +37,6 @@ pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer
             let mut visitor = ncollide::query::RayInterferencesCollector::new(&ray, &mut collector);
             dbvt.visit(&mut visitor);
         }
-        println!("{:?}", collector);
         let ghost_rot_next = UnitQuaternion::look_at_rh(&Vector3::new(posz_ghost, 0.0, posx_ghost), &Vector3::new(0.0,-1.0,0.0));
         local_player.ghost_rotation = (ghost_rot_next[0] * 2.0, ghost_rot_next[1], ghost_rot_next[2] * 2.0, ghost_rot_next[3]);
 

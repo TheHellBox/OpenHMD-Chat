@@ -160,7 +160,6 @@ pub fn start_audio_playback(rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Re
                         buffer_queue.push_back( buf );
                         buffers_avail = buffers_avail - 1;
                     }
-
                     audio_wrapper.player_position = data.player_position;
                     let (posx, posy, posz) = audio_wrapper.player_position;
                     let (rotx, roty, rotz) = audio_wrapper.player_rotation;
