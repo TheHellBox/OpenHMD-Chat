@@ -144,7 +144,8 @@ pub fn start_audio_playback(rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Re
                     sources.entry(id).or_insert(src);
                     let src = sources.get_mut(&id).unwrap();
                     let (posx, posy, posz) = player.position;
-                    src.set_position([posx, posy, posz]);
+                    println!("{:?}", player.position);
+                    src.set_position([-posx, posy, -posz]);
                 }
             }
             let data = rx.try_iter().last();
