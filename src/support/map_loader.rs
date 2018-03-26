@@ -2,6 +2,9 @@ use json;
 use rand;
 
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::prelude::*;
+use std::ops::Index;
 use rand::Rng;
 use bytevec::{ByteEncodable, ByteDecodable};
 
@@ -20,13 +23,27 @@ bytevec_impls! {
         texture: String
     }
 }
+#[derive(PartialEq, Debug, Default, Clone)]
+pub struct Collider{
+    pub position: (f32,f32,f32),
+    pub scale: (f32,f32,f32),
+}
+bytevec_impls! {
+    impl Collider {
+        position: (f32,f32,f32),
+        scale: (f32,f32,f32)
+    }
+}
+
 pub struct Map{
-    pub objects: HashMap<u32, MapObject>
+    pub objects: HashMap<u32, MapObject>,
+    pub colliders: HashMap<u32, Collider>,
 }
 impl Map{
     pub fn new() -> Map{
         Map{
-            objects: HashMap::new()
+            objects: HashMap::new(),
+            colliders: HashMap::new()
         }
     }
     pub fn load(&mut self, content: &String){
@@ -42,10 +59,25 @@ impl Map{
                 let object = MapObject::new(pos, rot, model, tex);
                 self.objects.insert(rand::thread_rng().gen_range(10000, 900000), object);
             }
+            for (text, x) in parsed["colliders"].entries(){
+                let pos = (x["position"][0].as_f32().unwrap(), x["position"][1].as_f32().unwrap(), x["position"][2].as_f32().unwrap());
+                let scale = (x["scale"][0].as_f32().unwrap(), x["scale"][1].as_f32().unwrap(), x["scale"][2].as_f32().unwrap());
+                let collider = Collider{
+                    position: pos,
+                    scale: scale
+                };
+                self.colliders.insert(rand::thread_rng().gen_range(0, 900000), collider);
+            }
         }
         else{
             println!("Error while loading map");
         }
+    }
+    pub fn objects(&self) -> &HashMap<u32, MapObject>{
+        &self.objects
+    }
+    pub fn colliders(&self) -> &HashMap<u32, Collider>{
+        &self.colliders
     }
 }
 impl MapObject{
@@ -62,5 +94,14 @@ impl MapObject{
     }
     pub fn from_network(message: Vec<u8>) -> MapObject{
         MapObject::decode::<u8>(&message).unwrap()
+    }
+}
+
+impl Collider{
+    pub fn to_network(&self) -> Vec<u8>{
+        self.encode::<u8>().unwrap()
+    }
+    pub fn from_network(message: Vec<u8>) -> Collider{
+        Collider::decode::<u8>(&message).unwrap()
     }
 }

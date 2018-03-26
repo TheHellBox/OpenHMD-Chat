@@ -83,15 +83,15 @@ impl DrawDisplay{
         for (_, object) in &buf.render_obj_buf {
             if object.visible == true{
                 let (rotx, roty, rotz, rotw) = object.rotation;
-                let (sizex, sizey, sizez) = object.size;
+                let (scalex, scaley, scalez) = object.scale;
                 let (x, y, z) = object.position;
                 let rotmatrix = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_homogeneous();
                 //println!("{:?}", rotmatrix);
 
                 let matrix = nalg_to_4x4(mat_to_nalg([
-                    [sizex, 0.0, 0.0, 0.0],
-                    [0.0, sizey, 0.0, 0.0],
-                    [0.0, 0.0, sizez, 0.0],
+                    [scalex, 0.0, 0.0, 0.0],
+                    [0.0, scaley, 0.0, 0.0],
+                    [0.0, 0.0, scalez, 0.0],
                     [ x , y, z, 1.0f32],
                 ]) * rotmatrix);
 

@@ -18,7 +18,7 @@ pub struct VRGui{
 #[derive(PartialEq)]
 pub struct Element{
     pub position: (f32, f32),
-    pub size: (f32, f32),
+    pub scale: (f32, f32),
     pub container: (bool, String),
     pub el_type: ElementType,
     pub visible: bool,
@@ -26,10 +26,10 @@ pub struct Element{
 }
 
 impl Element{
-    pub fn new(pos: (f32, f32), size: (f32, f32), container: (bool, String), el_type: ElementType) -> Element{
+    pub fn new(pos: (f32, f32), scale: (f32, f32), container: (bool, String), el_type: ElementType) -> Element{
         Element{
             position: pos,
-            size: size,
+            scale: scale,
             container: container,
             el_type: el_type,
             visible: true,
@@ -45,8 +45,8 @@ impl Element{
         self.position = pos;
     }
 
-    pub fn set_size(&mut self, size: (f32, f32)){
-        self.size = size;
+    pub fn set_scale(&mut self, scale: (f32, f32)){
+        self.scale = scale;
     }
 }
 
@@ -80,11 +80,11 @@ impl VRGui{
             println!("Failed to set element position");
         }
     }
-    pub fn set_element_size(&mut self, id: u32, size: (f32, f32)){
+    pub fn set_element_scale(&mut self, id: u32, scale: (f32, f32)){
         let element = self.elements.get_mut(&id);
         if element.is_some(){
             let element = element.unwrap();
-            element.set_size(size);
+            element.set_scale(scale);
         }
         else{
             println!("Failed to set element size");
@@ -98,14 +98,14 @@ impl VRGui{
         for (_, x) in &self.elements{
             if x.el_type == self::ElementType::Panel {
                 let (gui_posx, gui_posy) = x.position;
-                let (gui_sizex, gui_sizey) = x.size;
+                let (gui_sizex, gui_sizey) = x.scale;
                 let (_, texture) = x.container.clone();
                 let object = render::RenderObject{
                     mesh_name: "./assets/models/cube.obj".to_string(),
                     tex_name: texture,
                     position: (-posx + gui_posx,-posy + gui_posy,-posz - 2.0),
                     rotation: (0.0, 0.0, 1.0, 0.0),
-                    size: (gui_sizex, gui_sizey, 0.1),
+                    scale: (gui_sizex, gui_sizey, 0.1),
                     visible: true
                 };
                 render_data.render_obj_buf.insert(x.rend_id, object);

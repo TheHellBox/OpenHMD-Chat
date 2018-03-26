@@ -67,7 +67,7 @@ fn main(){
     };
     //Create communication channels. FIXME: Move all this MPSC stuff away from main
     let (tx_player, rx_player) = channel::<player::Player>();
-    let (tx_mapobj, rx_mapobj) = channel::<support::map_loader::MapObject>();
+    let (tx_mapobj, rx_mapobj) = channel::<(Option<support::map_loader::MapObject>, Option<support::map_loader::Collider>)>();
     let (tx_players, rx_players) = channel::<HashMap<u32, player::Player>>();
     let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
     let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
@@ -87,7 +87,7 @@ fn main(){
             let mut player = player::Player{
                 id: 0,
                 position: (0.0, 0.0, 0.0),
-                rotation: (0.0, 0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 1.0, 0.0),
                 model: "./assets/monkey.obj".to_string(),
                 name: "None".to_string()
             };
@@ -193,23 +193,35 @@ fn main(){
     thread::spawn(move || {
         audio::start_audio_playback(&rx_netsound_out, &rx_players);
     });
-
+    let mut dbvt = ncollide::partitioning::DBVT::new();
     //Starting main loop
     loop{
         let sys_time = SystemTime::now();
         hmd.context.update();
         let map_objects = rx_mapobj.try_iter();
         for x in map_objects{
-            let mut new_object = render::RenderObject{
-                mesh_name: x.model.clone(),
-                tex_name: x.texture.clone(),
-                position: x.position,
-                rotation: x.rotation,
-                size: (1.0, 1.0, 1.0),
-                visible: true
-            };
-            println!("{:?}", x);
-            render_data.render_obj_buf.insert(rand::thread_rng().gen_range(10000, 900000), new_object);
+            if x.0.is_some(){
+                let x = x.0.unwrap();
+                let mut new_object = render::RenderObject{
+                    mesh_name: x.model.clone(),
+                    tex_name: x.texture.clone(),
+                    position: x.position,
+                    rotation: x.rotation,
+                    scale: (1.0, 1.0, 1.0),
+                    visible: true
+                };
+                println!("{:?}", x);
+                render_data.render_obj_buf.insert(rand::thread_rng().gen_range(10000, 900000), new_object);
+            }
+            if x.1.is_some(){
+                let x = x.1.unwrap();
+                let cube = ncollide::shape::Cuboid::new(nalgebra::Vector3::new(x.scale.0, x.scale.1, x.scale.2));
+                let pos = nalgebra::Isometry3::new(nalgebra::Vector3::new(x.position.0, x.position.1, x.position.2), nalgebra::zero());
+                let bound_vol = ncollide::bounding_volume::bounding_sphere::<nalgebra::Point3<f32>, _, _>(&cube, &pos);
+                let dbvt_leaf = ncollide::partitioning::DBVTLeaf::new(bound_vol, pos);
+                dbvt.insert(dbvt_leaf);
+                println!("{:?}", x);
+            }
         }
         let (posx, posy, posz) = local_player.position;
 
@@ -218,7 +230,7 @@ fn main(){
 
         local_player.rotation = (quat[0],quat[1],quat[2],quat[3]);
 
-        gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat);
+        gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat, &mut dbvt);
 
         let data = rx_player.try_iter();
         for data in data{
@@ -228,7 +240,7 @@ fn main(){
                 tex_name: "./assets/textures/test.png".to_string(),
                 position: data.position,
                 rotation: (x,y,z,w),
-                size: (1.0, 1.0, 1.0),
+                scale: (1.0, 1.0, 1.0),
                 visible: true
             };
             render_data.render_obj_buf.insert(data.id, new_player);

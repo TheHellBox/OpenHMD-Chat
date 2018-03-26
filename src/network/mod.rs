@@ -68,7 +68,8 @@ impl Network {
     pub fn connect(&mut self, addr: String){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
-    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, tx_mobj: &mpsc::Sender<support::map_loader::MapObject>, txsound: &mpsc::Sender<AudioMsg>, player: &player::Player){
+    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, tx_mobj: &mpsc::Sender<(Option<support::map_loader::MapObject>, Option<support::map_loader::Collider>)>
+                , txsound: &mpsc::Sender<AudioMsg>, player: &player::Player){
         use nalgebra::geometry::UnitQuaternion;
         use nalgebra::geometry::Quaternion;
 
@@ -97,12 +98,16 @@ impl Network {
                         //Map object
                         4 => {
                             let object = support::map_loader::MapObject::from_network(message[1..message.len()].to_vec());
-                            let _ = tx_mobj.send(object);
+                            let _ = tx_mobj.send((Some(object), None));
                         },
                         //Write file
                         5 => {
                             let msg = message[1..message.len()].to_vec();
                             self.tx_back.send((msg, 0));
+                        },
+                        6 => {
+                            let collider = support::map_loader::Collider::from_network(message[1..message.len()].to_vec());
+                            let _ = tx_mobj.send((None, Some(collider)));
                         },
                         _ => {}
                     }

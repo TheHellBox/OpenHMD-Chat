@@ -28,7 +28,7 @@ pub struct RenderObject{
     pub tex_name: String,
     pub position: (f32, f32, f32),
     pub rotation: (f32, f32, f32, f32),
-    pub size: (f32, f32, f32),
+    pub scale: (f32, f32, f32),
     pub visible: bool,
 }
 
