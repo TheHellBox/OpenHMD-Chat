@@ -116,6 +116,7 @@ fn main(){
                 }
                 if timer.get().is_some(){
                     timer.reset();
+                    println!("Sending player position");
                     client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
                 }
                 client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);

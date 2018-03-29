@@ -1,22 +1,27 @@
+extern crate time;
+
 use std::time::SystemTime;
 
 pub struct Timer{
     limit: u32,
-    sys_time: SystemTime
+    time_start: i64
 }
 
 impl Timer{
     pub fn new(time: u32) -> Timer{
-        let sys_time = SystemTime::now();
+        let current_time = time::get_time();
+        let milliseconds = (current_time.sec as i64 * 1000) +
+                       (current_time.nsec as i64 / 1000 / 1000);
         Timer{
             limit: time,
-            sys_time: sys_time
+            time_start: milliseconds,
         }
     }
     pub fn get(&self) -> Option<()>{
-        let elapsed = self.sys_time.elapsed().unwrap();
-        let elapsed = 1000 / ((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64 + 1) as u32;
-        if elapsed > self.limit{
+        let current_time = time::get_time();
+        let milliseconds = (current_time.sec as i64 * 1000) +
+                       (current_time.nsec as i64 / 1000 / 1000);
+        if milliseconds - self.time_start > self.limit as i64{
             Some(())
         }
         else{
@@ -24,6 +29,9 @@ impl Timer{
         }
     }
     pub fn reset(&mut self){
-        self.sys_time = SystemTime::now();
+        let current_time = time::get_time();
+        let milliseconds = (current_time.sec as i64 * 1000) +
+                       (current_time.nsec as i64 / 1000 / 1000);
+        self.time_start = milliseconds;
     }
 }

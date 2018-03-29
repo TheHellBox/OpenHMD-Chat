@@ -110,7 +110,6 @@ pub fn start_audio_playback(rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Re
         }
         let data = rx.try_iter().last();
         if data.is_some(){
-            println!("Trying to play");
             let data = data.unwrap();
             let src = sources.get_mut(&data.source_id);
             if src.is_some(){
