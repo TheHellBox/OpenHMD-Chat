@@ -97,6 +97,7 @@ fn main(){
             let params = params.to_network();
             client.send(params, 4, cobalt::MessageKind::Reliable);
             let mut file_writer = support::file_writer::FileWriter::new("temp".to_string());
+            let mut timer = support::timer::Timer::new(100);
             loop{
                 let data = rx_orient.try_iter();
                 for data in data{
@@ -113,7 +114,10 @@ fn main(){
                     };
                     client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
                 }
-                client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
+                if timer.get().is_some(){
+                    timer.reset();
+                    client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
+                }
                 client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
                 let back_data = client.rx_back.try_iter();
                 for (x, type_d) in back_data{
@@ -188,12 +192,32 @@ fn main(){
     let mut local_player = player::LocalPlayer::new((posx,posy,posz));
 
     // Audio stuff
-    thread::spawn(move || {
-        audio::start_audio_capture(&tx_netsound_in);
-    });
-    thread::spawn(move || {
-        audio::start_audio_playback(&rx_netsound_out, &rx_players);
-    });
+    let audio_wrapper = audio::AudioWrapper::new();
+    if audio_wrapper.is_ok(){
+        let mut audio_wrapper = audio_wrapper.unwrap();
+        let capture = audio_wrapper.create_capture();
+        let output = audio_wrapper.create_output();
+        if capture.is_some(){
+            thread::spawn(move || {
+                audio::start_audio_capture(&tx_netsound_in, capture.unwrap());
+            });
+        }
+        else{
+            println!("Failed to init audio capture");
+        }
+        if output.is_some(){
+            let context = audio_wrapper.get_context(output.unwrap());
+            thread::spawn(move || {
+                audio::start_audio_playback(&rx_netsound_out, &rx_players, context.unwrap());
+            });
+        }
+        else{
+            println!("Failed to init audio output");
+        }
+    }
+    else{
+        println!("Failed to init audio")
+    }
     let mut dbvt = ncollide::partitioning::DBVT::new();
     //Starting main loop
     loop{
@@ -209,7 +233,7 @@ fn main(){
                     position: x.position,
                     rotation: x.rotation,
                     scale: (1.0, 1.0, 1.0),
-                    visible: true
+                    visible: true,
                 };
                 println!("{:?}", x);
                 render_data.render_obj_buf.insert(rand::thread_rng().gen_range(10000, 900000), new_object);
