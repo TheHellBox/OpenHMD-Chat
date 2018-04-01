@@ -106,7 +106,7 @@ impl VRGui{
                     position: (-posx + gui_posx,-posy + gui_posy,-posz - 2.0),
                     rotation: (0.0, 0.0, 1.0, 0.0),
                     scale: (gui_sizex, gui_sizey, 0.1),
-                    visible: true
+                    visible: false
                 };
                 render_data.render_obj_buf.insert(x.rend_id, object);
             }

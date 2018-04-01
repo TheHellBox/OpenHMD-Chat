@@ -174,6 +174,6 @@ impl DrawDisplay{
             &params_dis
         ).unwrap();
 
-        target.finish().unwrap();
+        target.set_finish().unwrap();
     }
 }

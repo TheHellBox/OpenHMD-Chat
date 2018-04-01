@@ -20,7 +20,7 @@ pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer
 
     if (local_player.player_speed_f == 0.0) & (local_player.player_speed_lr == 0.0){
         local_player.player_moving = false;
-        local_player.position = local_player.ghost_position;
+        local_player.camera_position = local_player.position;
     }
     else{
         local_player.player_moving = true;
@@ -33,14 +33,14 @@ pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer
 
         let mut collector = Vec::new();
         {
-            let ray = ncollide::query::Ray::new(nalgebra::Point3::new(local_player.ghost_position.0, local_player.ghost_position.1, local_player.ghost_position.2), -nalgebra::Vector3::y());
+            let ray = ncollide::query::Ray::new(nalgebra::Point3::new(local_player.position.0, local_player.position.1, local_player.position.2), -nalgebra::Vector3::y());
             let mut visitor = ncollide::query::RayInterferencesCollector::new(&ray, &mut collector);
             dbvt.visit(&mut visitor);
         }
         let ghost_rot_next = UnitQuaternion::look_at_rh(&Vector3::new(posz_ghost, 0.0, posx_ghost), &Vector3::new(0.0,-1.0,0.0));
-        local_player.ghost_rotation = (ghost_rot_next[0] * 2.0, ghost_rot_next[1], ghost_rot_next[2] * 2.0, ghost_rot_next[3]);
+        let ghost_rot = (ghost_rot_next[0] * 2.0, ghost_rot_next[1], ghost_rot_next[2] * 2.0, ghost_rot_next[3]);
 
-        local_player.ghost_position.1 = {
+        local_player.position.1 = {
             let x = collector.last();
             if x.is_some(){
                 x.unwrap().0.translation.vector[1] + (x.unwrap().1).1 + 1.0
@@ -50,14 +50,14 @@ pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer
             }
         };
 
-        local_player.ghost_position.0 -= posx_ghost;
-        local_player.ghost_position.2 -= posz_ghost;
+        local_player.position.0 -= posx_ghost;
+        local_player.position.2 -= posz_ghost;
 
         let ghost = render::RenderObject{
             mesh_name: "./assets/models/monkey.obj".to_string(),
             tex_name: "./assets/textures/test.png".to_string(),
-            position: local_player.ghost_position,
-            rotation: local_player.ghost_rotation,
+            position: local_player.position,
+            rotation: ghost_rot,
             scale: (1.0, 1.0, 1.0),
             visible: true
         };

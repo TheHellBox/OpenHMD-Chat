@@ -17,15 +17,15 @@ impl Timer{
             time_start: milliseconds,
         }
     }
-    pub fn get(&self) -> Option<()>{
+    pub fn get(&self) -> bool{
         let current_time = time::get_time();
         let milliseconds = (current_time.sec as i64 * 1000) +
                        (current_time.nsec as i64 / 1000 / 1000);
         if milliseconds - self.time_start > self.limit as i64{
-            Some(())
+            true
         }
         else{
-            None
+            false
         }
     }
     pub fn reset(&mut self){

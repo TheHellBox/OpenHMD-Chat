@@ -16,8 +16,8 @@ pub struct LocalPlayer {
     pub player_speed_f: f32,
     pub player_speed_lr: f32,
 
-    pub ghost_position: (f32, f32, f32),
-    pub ghost_rotation: (f32, f32, f32, f32),
+    pub camera_position: (f32, f32, f32),
+
     pub player_moving: bool
 }
 
@@ -30,8 +30,8 @@ impl LocalPlayer {
             player_speed_f: 0.0,
             player_speed_lr: 0.0,
 
-            ghost_position: pos,
-            ghost_rotation: (0.0, 0.0, 1.0, 0.0),
+            camera_position: pos,
+
             player_moving: false
         }
     }

@@ -19,7 +19,7 @@ pub fn gen_texture_buffer(disp: &glium::Display) -> HashMap<String, glium::Textu
         if path.is_file() {
             let name = path.display().to_string();
             print!("Loading texture {} ... ", path.display());
-            if name.ends_with(".png") {
+            if name.ends_with(".png") || name.ends_with(".jpg") || name.ends_with(".jpeg"){
                 let raw = open_image(disp, path.display().to_string());
                 textures.insert(name, raw);
 

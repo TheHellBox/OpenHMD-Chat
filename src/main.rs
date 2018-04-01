@@ -114,9 +114,8 @@ fn main(){
                     };
                     client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
                 }
-                if timer.get().is_some(){
+                if timer.get() {
                     timer.reset();
-                    println!("Sending player position");
                     client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
                 }
                 client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
@@ -276,15 +275,14 @@ fn main(){
 
         vr_gui.update(&mut render_data, local_player.position);
 
-        camera.set_pos(nalgebra::Vector3::new(posx,posy,posz));
+        camera.set_pos(nalgebra::Vector3::new(local_player.camera_position.0, local_player.camera_position.1, local_player.camera_position.2));
 
         //Render
         display.draw(&render_data, &program, &ohmd_dis_shaders, &hmd.device, &camera, (scrw, scrh), &vrmode, &hmd_params);
 
         let _ = tx_orient.send(((quat[0],quat[1],quat[2],quat[3]), (posx,posy,posz)));
         let elapsed = sys_time.elapsed().unwrap();
-        /*
-        let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);
+        /*let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);
         println!("FPS: {}", fps as u32);*/
     }
 }
