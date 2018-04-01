@@ -24,7 +24,7 @@ impl ClParams {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
-        let mut files = HashMap::with_capacity(256);
+        let mut files = HashMap::with_capacity(512);
 
         let textures = fs::read_dir("./assets/textures/").unwrap();
         //Get models pathes
@@ -32,7 +32,6 @@ impl ClParams {
 
         let mut pathes = vec![];
 
-        let mut hasher = DefaultHasher::new();
         for x in textures{
             let path = x.unwrap().path();
             if path.is_file(){
@@ -52,6 +51,7 @@ impl ClParams {
             }
         }
         for filename in pathes{
+            let mut hasher = DefaultHasher::new();
             let mut file = File::open(&filename).unwrap();
             let mut buf = vec![];
             file.read_to_end(&mut buf);
