@@ -2,7 +2,7 @@
 
 <a href="https://discord.gg/FY3naJ3"><img src="https://img.shields.io/badge/Chat-Discord-blue.svg" alt="Discord"/></a>
 
-<a href="https://www.youtube.com/watch?v=GxrDkl84yh0"></a>
+<a href="https://www.youtube.com/watch?v=GxrDkl84yh0">video</a>
 
 # OpenHMD-Chat
 OpenHMD-Chat is a Social VR experement. It's crossplatform, open source, and written on Rust.
