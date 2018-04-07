@@ -5,7 +5,7 @@ authors = ["TheHellBox <thehellbox11@gmail.com>"]
 
 [dependencies]
 glium="0.20.0"
-openhmd-rs="0.1.5"
+openhmd-rs="0.1.6"
 tobj="0.1.6"
 image = "0.18.0"
 nalgebra="0.14.1"

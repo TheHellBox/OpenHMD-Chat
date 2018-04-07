@@ -39,23 +39,56 @@ impl ohmdHeadSet{
     pub fn gen_cfg(&self) -> HMDParams{
         use math::m16_to_4x4;
 
-        let scrw = self.device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_HORIZONTAL_RESOLUTION) as u32;
-        let scrh = self.device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_VERTICAL_RESOLUTION) as u32;
+        let scrw = match self.device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_HORIZONTAL_RESOLUTION){
+            Some(x) => x,
+            _ => 1024
+        } as u32;
+        let scrh = match self.device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_VERTICAL_RESOLUTION){
+            Some(x) => x,
+            _ => 768
+        } as u32;
 
         // Calculating HMD params
-        let scr_size_w = self.device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_HORIZONTAL_SIZE)[0];
-        let scr_size_h = self.device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_VERTICAL_SIZE )[0];
-        let distortion_k = self.device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_DISTORTION_K );
-        let aberration_k = self.device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_ABERRATION_K );
+        let scr_size_w = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_HORIZONTAL_SIZE){
+            Some(x) => x[0],
+            _ => 1.0
+        };
+        let scr_size_h = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_VERTICAL_SIZE ){
+            Some(x) => x[0],
+            _ => 1.0
+        };
+        let distortion_k = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_DISTORTION_K ){
+            Some(x) => [x[0], x[1], x[2], x[3]],
+            _ => [0.0,0.0,0.0,1.0]
+        };
+        let aberration_k = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_ABERRATION_K ){
+            Some(x) =>  [x[0], x[1], x[2]],
+            _ => [0.0,0.0,1.0]
+        };
 
         let view_port_scale = [scr_size_w / 2.0, scr_size_h];
 
-        let sep = self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_HORIZONTAL_SEPARATION )[0];
-        let mut left_lens_center: [f32; 2] = [0.0, self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION)[0]];
-        let mut right_lens_center: [f32; 2] = [0.0, self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION)[0]];
+        let sep = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_HORIZONTAL_SEPARATION ){
+            Some(x) => x[0],
+            _ => 1.0
+        };
+        let mut left_lens_center: [f32; 2] = [0.0, match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION){
+            Some(x) => x[0],
+            _ => 1.0
+        }];
+        let mut right_lens_center: [f32; 2] = [0.0, match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION){
+            Some(x) => x[0],
+            _ => 1.0
+        }];
 
-        let oproj = m16_to_4x4(self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX));
-        let oproj2 = m16_to_4x4(self.device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX));
+        let oproj = m16_to_4x4( match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX){
+            Some(x) => x,
+            _ => [0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0]
+        });
+        let oproj2 = m16_to_4x4(match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_PROJECTION_MATRIX){
+            Some(x) => x,
+            _ => [0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0,0.0, 0.0, 0.0, 0.0]
+        });
 
         left_lens_center[0] = view_port_scale[0] - sep/2.0;
         right_lens_center[0] = sep/2.0;
@@ -70,8 +103,8 @@ impl ohmdHeadSet{
 
             view_port_scale: view_port_scale,
 
-            distortion_k: [distortion_k[0], distortion_k[1], distortion_k[2], distortion_k[3]],
-            aberration_k: [aberration_k[0], aberration_k[1], aberration_k[2]],
+            distortion_k: distortion_k,
+            aberration_k: aberration_k,
 
             projection1: oproj,
             projection2: oproj2,

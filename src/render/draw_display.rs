@@ -75,9 +75,9 @@ impl DrawDisplay{
 
         let view = camera.view.to_homogeneous();
 
-        let omodelv1 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX)) * view);
+        let omodelv1 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX).unwrap()) * view);
 
-        let omodelv2 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX)) * view);
+        let omodelv2 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX).unwrap()) * view);
 
 
         for (_, object) in &buf.render_obj_buf {

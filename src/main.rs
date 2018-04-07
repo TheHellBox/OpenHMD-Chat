@@ -251,7 +251,10 @@ fn main(){
         }
         let (posx, posy, posz) = local_player.position;
 
-        let ohmd_orient = hmd.device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
+        let ohmd_orient = match hmd.device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT){
+            Some(x) => [x[0], x[1], x[2], x[3]],
+            _ => [0.0,0.0,0.0,0.0]
+        };
         let quat = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[1], ohmd_orient[2], -ohmd_orient[3]));
 
         gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat, &mut dbvt, &mut events_loop);
