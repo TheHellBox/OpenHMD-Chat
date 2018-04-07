@@ -72,70 +72,6 @@ fn main(){
     let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
     let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
     let (tx_netsound_out, rx_netsound_out) = channel::<AudioMsg>();
-    let (tx_ready, rx_ready) = channel::<bool>();
-    //FIXME: Move network thread from main to other module, it takes a lot of code
-    {
-
-        thread::spawn(move || {
-            let params = network::client_params::ClParams::new();
-            let mut client = network::Network::new();
-            println!("Connecting to server...");
-            //Conecting to server
-            client.connect(ip);
-
-            //Spawning player.
-            let mut player = player::Player{
-                id: 0,
-                position: (0.0, 0.0, 0.0),
-                rotation: (0.0, 0.0, 1.0, 0.0),
-                model: "./assets/monkey.obj".to_string(),
-                name: "None".to_string()
-            };
-
-            client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
-            println!("Sending client info...");
-            let params = params.to_network();
-            client.send(params, 4, cobalt::MessageKind::Reliable);
-            let mut file_writer = support::file_writer::FileWriter::new("temp".to_string());
-            let mut timer = support::timer::Timer::new(100);
-            loop{
-                let data = rx_orient.try_iter();
-                for data in data{
-                    let (rot, pos) = data;
-                    player.rotation = rot;
-                    player.position = pos;
-                }
-                let netsound = rx_netsound_in.try_iter();
-                for x in netsound{
-                    let netsound = x;
-                    let data = network::NetAudio{
-                        data: netsound.data,
-                        id: player.id
-                    };
-                    client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
-                }
-                if timer.get() {
-                    timer.reset();
-                    client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
-                }
-                client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
-                let back_data = client.rx_back.try_iter();
-                for (x, type_d) in back_data{
-                    if x.starts_with(&vec![233, 144, 122, 198, 134, 253, 251]){
-                        file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[7..x.len()].to_vec()).unwrap());
-                        println!("Downloading {}", String::from_utf8(x[7..x.len()].to_vec()).unwrap());
-                    }
-                    else if x.starts_with(&vec![100, 137, 211, 233, 212, 222]){
-                        tx_ready.send(true);
-                    }
-                    else{
-                        file_writer.write((&x).to_owned());
-                    }
-                }
-            }
-        });
-    }
-    let data = rx_ready.recv();
     //Init OpenHMD
     let hmd = openhmd::ohmdHeadSet::new(hmdid);
     hmd.context.update();
@@ -219,6 +155,71 @@ fn main(){
         println!("Failed to init audio")
     }
     let mut dbvt = ncollide::partitioning::DBVT::new();
+
+    //FIXME: Move network thread from main to other module, it takes a lot of code
+    //FIXME: This code is regure game restart for models loading
+    {
+
+        thread::spawn(move || {
+            let params = network::client_params::ClParams::new();
+            let mut client = network::Network::new();
+            println!("Connecting to server...");
+            //Conecting to server
+            client.connect(ip);
+
+            //Spawning player.
+            let mut player = player::Player{
+                id: 0,
+                position: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 1.0, 0.0),
+                model: "./assets/player.obj".to_string(),
+                name: "None".to_string()
+            };
+
+            client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
+            println!("Sending client info...");
+            let params = params.to_network();
+            client.send(params, 4, cobalt::MessageKind::Reliable);
+            let mut file_writer = support::file_writer::FileWriter::new("temp".to_string());
+            let mut timer = support::timer::Timer::new(100);
+            loop{
+                let data = rx_orient.try_iter();
+                for data in data{
+                    let (rot, pos) = data;
+                    player.rotation = rot;
+                    player.position = pos;
+                }
+                let netsound = rx_netsound_in.try_iter();
+                for x in netsound{
+                    let netsound = x;
+                    let data = network::NetAudio{
+                        data: netsound.data,
+                        id: player.id
+                    };
+                    client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
+                }
+                if timer.get() {
+                    timer.reset();
+                    client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
+                }
+                client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
+                let back_data = client.rx_back.try_iter();
+                for (x, type_d) in back_data{
+                    if x.starts_with(&vec![233, 144, 122, 198, 134, 253, 251]){
+                        file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[7..x.len()].to_vec()).unwrap());
+                        println!("Downloading {}", String::from_utf8(x[7..x.len()].to_vec()).unwrap());
+                    }
+                    else if x.starts_with(&vec![100, 137, 211, 233, 212, 222]){
+                        //render_data.mesh_buf.insert()
+                    }
+                    else{
+                        file_writer.write((&x).to_owned());
+                    }
+                }
+            }
+        });
+    }
+
     //Starting main loop
     loop{
         let sys_time = SystemTime::now();
@@ -253,15 +254,13 @@ fn main(){
         let ohmd_orient = hmd.device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT);
         let quat = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[1], ohmd_orient[2], -ohmd_orient[3]));
 
-        local_player.rotation = (quat[0],quat[1],quat[2],quat[3]);
-
         gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &quat, &mut dbvt, &mut events_loop);
 
         let data = rx_player.try_iter();
         for data in data{
             let (x,y,z,w) = data.rotation;
             let mut new_player = render::RenderObject{
-                mesh_name: "./assets/models/monkey.obj".to_string(),
+                mesh_name: "./assets/models/player.obj".to_string(),
                 tex_name: "./assets/textures/test.png".to_string(),
                 position: data.position,
                 rotation: (x,y,z,w),
@@ -276,7 +275,7 @@ fn main(){
         vr_gui.update(&mut render_data, local_player.position);
 
         camera.set_pos(nalgebra::Vector3::new(local_player.camera_position.0, local_player.camera_position.1, local_player.camera_position.2));
-
+        camera.set_rot(local_player.camera_rotation);
         //Render
         display.draw(&render_data, &program, &ohmd_dis_shaders, &hmd.device, &camera, (scrw, scrh), &vrmode, &hmd_params);
 

@@ -51,19 +51,14 @@ pub fn gen_buffer(disp: &Display) -> HashMap<String, Mesh>{
         let path = path.unwrap().path();
         if path.is_file() {
             let name = path.display().to_string();
-            if !name.ends_with(".mtl") {
+            if path.extension().unwrap() == "obj"{
                 print!("Loading model {} ... ", path.display());
-                if name.ends_with(".obj") {
-                    let raw = load(path.display().to_string());
-                    let mesh = glium::vertex::VertexBuffer::new(disp, &raw).unwrap().into_vertex_buffer_any();
+                let raw = load(path.display().to_string());
+                let mesh = glium::vertex::VertexBuffer::new(disp, &raw).unwrap().into_vertex_buffer_any();
 
-                    models.insert(name, Mesh{mesh: mesh});
+                models.insert(name, Mesh{mesh: mesh});
 
-                    println!("Done!");
-                }
-                else{
-                    println!("Invalid file format");
-                }
+                println!("Done!");
             }
         }
     }

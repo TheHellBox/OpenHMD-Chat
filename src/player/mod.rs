@@ -17,6 +17,7 @@ pub struct LocalPlayer {
     pub player_speed_lr: f32,
 
     pub camera_position: (f32, f32, f32),
+    pub camera_rotation: (f32, f32, f32, f32),
 
     pub player_moving: bool
 }
@@ -25,13 +26,13 @@ impl LocalPlayer {
     pub fn new(pos: (f32,f32,f32)) -> LocalPlayer{
         LocalPlayer{
             position: pos,
-            rotation: (0.0,0.0,0.0,0.0),
+            rotation: (0.0,0.0,1.0,0.0),
 
             player_speed_f: 0.0,
             player_speed_lr: 0.0,
 
             camera_position: pos,
-
+            camera_rotation: (0.0,0.0,1.0,0.0),
             player_moving: false
         }
     }

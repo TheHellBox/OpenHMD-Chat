@@ -5,6 +5,9 @@ pub mod camera;
 use glium::vertex::VertexBufferAny;
 use glium::Texture2d;
 use std::collections::HashMap;
+use support;
+use glium;
+
 #[derive(Copy, Clone)]
 pub struct Vertex {
     pub position: [f32; 3],
@@ -38,6 +41,24 @@ pub struct RenderData{
     pub render_obj_buf: HashMap<u32, RenderObject>,
 }
 
+impl RenderData {
+    pub fn append_file(&mut self, filename: String, disp: &glium::Display){
+        use std::path::Path;
+        let path = Path::new(&filename);
+        if path.is_file() {
+            let name = path.display().to_string();
+            if path.extension().unwrap() == "obj"{
+                print!("Loading model {} ... ", path.display());
+                let raw = support::obj_model_loader::load(path.display().to_string());
+                let mesh = glium::vertex::VertexBuffer::new(disp, &raw).unwrap().into_vertex_buffer_any();
+
+                self.mesh_buf.insert((&filename).to_owned(), Mesh{mesh: mesh});
+
+                println!("Done!");
+            }
+        }
+    }
+}
 pub const SHADER_SIMPLE_FRAG: &'static str = r#"
 #version 140
 in vec3 v_normal;

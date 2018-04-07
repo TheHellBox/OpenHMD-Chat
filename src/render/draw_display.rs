@@ -97,8 +97,8 @@ impl DrawDisplay{
 
                 let mesh = match buf.mesh_buf.get(&object.mesh_name) {
                     Some(x) => x,
-                    None => { buf.mesh_buf.get("./assets/models/monkey.obj").unwrap() },
-                    _ => { buf.mesh_buf.get("./assets/models/monkey.obj").unwrap() }
+                    None => { buf.mesh_buf.get("./assets/models/cube.obj").unwrap() },
+                    _ => { buf.mesh_buf.get("./assets/models/cube.obj").unwrap() }
                 };
                 let tex = match buf.texture_buf.get(&object.tex_name) {
                     Some(x) => x,
