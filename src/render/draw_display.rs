@@ -33,32 +33,7 @@ impl DrawDisplay{
         let params_dis = glium::DrawParameters {
             .. Default::default()
         };
-
-        let mut picking_attachments: Option<(glium::texture::UnsignedTexture2d, glium::framebuffer::DepthRenderBuffer)> = None;
-
-        let picking_pbo: glium::texture::pixel_buffer::PixelBuffer<u32>
-            = glium::texture::pixel_buffer::PixelBuffer::new_empty(&self.display, 6220800);
-
-        if picking_attachments.is_none() || (
-            picking_attachments.as_ref().unwrap().0.get_width(),
-            picking_attachments.as_ref().unwrap().0.get_height().unwrap()
-        ) != target.get_dimensions() {
-            let (width, height) = target.get_dimensions();
-            picking_attachments = Some((
-                glium::texture::UnsignedTexture2d::empty_with_format(
-                    &self.display,
-                    glium::texture::UncompressedUintFormat::U32,
-                    glium::texture::MipmapsOption::NoMipmap,
-                    width, height,
-                ).unwrap(),
-                glium::framebuffer::DepthRenderBuffer::new(
-                    &self.display,
-                    glium::texture::DepthFormat::F32,
-                    width, height,
-                ).unwrap()
-            ))
-        }
-
+        
         target.clear_color_and_depth((0.2, 0.2, 0.7, 1.0), 1.0);
 
         let depthtexture1 = glium::texture::DepthTexture2d::empty_with_format(&self.display, glium::texture::DepthFormat::F32, glium::texture::MipmapsOption::NoMipmap, scrw, scrh).unwrap();
@@ -73,11 +48,11 @@ impl DrawDisplay{
         picking_target2.clear_color_and_depth((0.2, 0.2, 0.7, 1.0), 1.0);
 
 
-        let view = camera.view.to_homogeneous();
+        let view = camera.view.rotation.to_homogeneous();
+        let position = camera.view.translation.to_homogeneous();
+        let omodelv1 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX).unwrap()) * view * position);
 
-        let omodelv1 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX).unwrap()) * view);
-
-        let omodelv2 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX).unwrap()) * view);
+        let omodelv2 = nalg_to_4x4(mat16_to_nalg(device.getf(openhmd_rs::ohmd_float_value::OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX).unwrap()) * view * position);
 
 
         for (_, object) in &buf.render_obj_buf {
