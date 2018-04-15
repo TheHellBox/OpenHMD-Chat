@@ -16,13 +16,13 @@ use glium::glutin::EventsLoop;
 pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer, render_data: &mut render::RenderData, orient: &UnitQuaternion<f32>,
                 dbvt: &mut ncollide::partitioning::DBVT<nalgebra::Point3<f32>, (nalgebra::Isometry3<f32>, (f32, f32, f32)), ncollide::bounding_volume::BoundingSphere<nalgebra::Point3<f32>>>,
                 ev_loop: &mut EventsLoop){
-    let matrix = UnitQuaternion::from_quaternion(Quaternion::new(local_player.rotation.0, local_player.rotation.1,local_player.rotation.2,local_player.rotation.3)).to_homogeneous();
+    let matrix = UnitQuaternion::from_quaternion(Quaternion::new(orient[0], orient[1],orient[2],orient[3])).to_homogeneous();
     controls::move_player(gamepad, local_player, ev_loop);
 
     if (local_player.player_speed_f == 0.0) & (local_player.player_speed_lr == 0.0){
         local_player.player_moving = false;
         local_player.camera_position = local_player.position;
-        local_player.rotation = (orient[0], orient[1], orient[2], orient[3]);
+        local_player.camera_rotation = local_player.rotation;
     }
     else{
         local_player.player_moving = true;
@@ -53,6 +53,8 @@ pub fn update(gamepad: &mut gilrs::Gilrs, local_player: &mut player::LocalPlayer
         };
         local_player.position.0 += posx_ghost;
         local_player.position.2 += posz_ghost;
+
+        local_player.rotation = ghost_rot;
 
         let ghost = render::RenderObject{
             mesh_name: "./assets/models/player.obj".to_string(),

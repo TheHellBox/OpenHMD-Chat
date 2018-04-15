@@ -2,6 +2,7 @@ pub mod client_params;
 
 use player;
 use support;
+use cobalt;
 
 use bytevec::{ByteEncodable, ByteDecodable};
 use std::sync::mpsc;
@@ -135,4 +136,70 @@ impl Network {
         let conn = self.client.connection().unwrap();
         conn.send(type_m, msg);
     }
+}
+
+pub fn start_net_thread(ip: String, tx_player: mpsc::Sender<player::Player>,
+                        tx_mapobj: mpsc::Sender<(Option<support::map_loader::MapObject>, Option<support::map_loader::Collider>)>,
+                        tx_netsound_out: mpsc::Sender<AudioMsg>,
+                        rx_orient: mpsc::Receiver<((f32,f32,f32,f32), (f32,f32,f32))>, rx_netsound_in: mpsc::Receiver<AudioMsg>)
+                        {
+    use std::thread;
+    thread::spawn(move || {
+        let params = client_params::ClParams::new();
+        let mut client = Network::new();
+        println!("Connecting to server...");
+        //Conecting to server
+        client.connect(ip);
+
+        //Spawning player.
+        let mut player = player::Player{
+            id: 0,
+            position: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 1.0, 0.0),
+            model: "./assets/player.obj".to_string(),
+            name: "None".to_string()
+        };
+
+        client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
+        println!("Sending client info...");
+        let params = params.to_network();
+        client.send(params, 4, cobalt::MessageKind::Reliable);
+        let mut file_writer = support::file_writer::FileWriter::new("temp".to_string());
+        let mut timer = support::timer::Timer::new(100);
+        loop{
+            let data = rx_orient.try_iter();
+            for data in data{
+                let (rot, pos) = data;
+                player.rotation = rot;
+                player.position = pos;
+            }
+            let netsound = rx_netsound_in.try_iter();
+            for x in netsound{
+                let netsound = x;
+                let data = NetAudio{
+                    data: netsound.data,
+                    id: player.id
+                };
+                client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
+            }
+            if timer.get() {
+                timer.reset();
+                client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
+            }
+            client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
+            let back_data = client.rx_back.try_iter();
+            for (x, type_d) in back_data{
+                if x.starts_with(&vec![233, 144, 122, 198, 134, 253, 251]){
+                    file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[7..x.len()].to_vec()).unwrap());
+                    println!("Downloading {}", String::from_utf8(x[7..x.len()].to_vec()).unwrap());
+                }
+                else if x.starts_with(&vec![100, 137, 211, 233, 212, 222]){
+                    //render_data.mesh_buf.insert()
+                }
+                else{
+                    file_writer.write((&x).to_owned());
+                }
+            }
+        }
+    });
 }
