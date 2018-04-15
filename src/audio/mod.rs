@@ -64,13 +64,34 @@ impl AudioWrapper{
         };
         Some(ctx)
     }
+    pub fn start_threads(&self, tx_netsound_in: mpsc::Sender<AudioMsg>, rx_netsound_out: mpsc::Receiver<AudioMsg>, rx_players: mpsc::Receiver<HashMap<u32, player::Player>> ){
+        let capture = self.create_capture();
+        let output = self.create_output();
+        if capture.is_some(){
+            thread::spawn(move || {
+                start_audio_capture(tx_netsound_in, capture.unwrap());
+            });
+        }
+        else{
+            println!("Failed to init audio capture");
+        }
+        if output.is_some(){
+            let context = self.get_context(output.unwrap());
+            thread::spawn(move || {
+                start_audio_playback(rx_netsound_out, rx_players, context.unwrap());
+            });
+        }
+        else{
+            println!("Failed to init audio output");
+        }
+    }
 }
 
 impl AudioStaticSource{
 
 }
 
-pub fn start_audio_capture(tx: &mpsc::Sender<AudioMsg>, mut capture: alto::Capture<Mono<i16>>){
+pub fn start_audio_capture(tx: mpsc::Sender<AudioMsg>, mut capture: alto::Capture<Mono<i16>>){
     let mut opus_encoder = opus::Encoder::new(16000, opus::Channels::Mono, opus::Application::Voip).unwrap();
     capture.start();
     loop{
@@ -91,7 +112,7 @@ pub fn start_audio_capture(tx: &mpsc::Sender<AudioMsg>, mut capture: alto::Captu
     }
 }
 
-pub fn start_audio_playback(rx: &mpsc::Receiver<AudioMsg>, rx_players: &mpsc::Receiver<HashMap<u32, player::Player>>, context: alto::Context){
+pub fn start_audio_playback(rx: mpsc::Receiver<AudioMsg>, rx_players: mpsc::Receiver<HashMap<u32, player::Player>>, context: alto::Context){
     let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
     let mut sources = HashMap::new();
     loop{

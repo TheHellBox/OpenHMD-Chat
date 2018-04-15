@@ -131,25 +131,7 @@ fn main(){
     let audio_wrapper = audio::AudioWrapper::new();
     if audio_wrapper.is_ok(){
         let mut audio_wrapper = audio_wrapper.unwrap();
-        let capture = audio_wrapper.create_capture();
-        let output = audio_wrapper.create_output();
-        if capture.is_some(){
-            thread::spawn(move || {
-                audio::start_audio_capture(&tx_netsound_in, capture.unwrap());
-            });
-        }
-        else{
-            println!("Failed to init audio capture");
-        }
-        if output.is_some(){
-            let context = audio_wrapper.get_context(output.unwrap());
-            thread::spawn(move || {
-                audio::start_audio_playback(&rx_netsound_out, &rx_players, context.unwrap());
-            });
-        }
-        else{
-            println!("Failed to init audio output");
-        }
+        audio_wrapper.start_threads(tx_netsound_in, rx_netsound_out, rx_players);
     }
     else{
         println!("Failed to init audio");
