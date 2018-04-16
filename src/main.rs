@@ -118,8 +118,6 @@ fn main(){
     vr_gui.push_element(test_element);
     vr_gui.push_element(test_element2);
 
-    let mut settings_active = false;
-
     //Generating random player position
     let posx = rand::thread_rng().gen_range(-7.0, 7.0);
     let posy = 0.0;
@@ -204,7 +202,7 @@ fn main(){
         //Render
         display.draw(&render_data, &program, &ohmd_dis_shaders, &hmd.device, &camera, (scrw, scrh), &vrmode, &hmd_params);
 
-        let _ = tx_orient.send(((local_player.camera_rotation.0, local_player.camera_rotation.1,local_player.camera_rotation.2,local_player.camera_rotation.3),
+        let _ = tx_orient.send(((orient[0], -orient[1], -orient[2], orient[3]),
                                 (posx,posy,posz)));
         let elapsed = sys_time.elapsed().unwrap();
         /*let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);

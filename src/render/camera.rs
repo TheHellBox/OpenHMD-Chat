@@ -13,8 +13,6 @@ impl Camera{
         }
     }
     pub fn set_pos(&mut self, pos: Vector3<f32>){
-        let mut pos = pos;
-        pos[1] = -pos[1];
         self.view.translation = Translation3::from_vector(-pos);
     }
     pub fn set_rot(&mut self, rot: UnitQuaternion<f32>){
