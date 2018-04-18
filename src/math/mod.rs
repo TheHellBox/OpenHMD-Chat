@@ -37,3 +37,7 @@ pub fn mat_to_nalg(mat: [[f32;4]; 4]) -> nalgebra::core::MatrixN<f32, nalgebra::
     }
     raw
 }
+
+pub fn lerp(val1: f32, val2: f32, t: f32) -> f32{
+    val1 + t * (val2 - val1)
+}

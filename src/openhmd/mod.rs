@@ -41,21 +41,21 @@ impl ohmdHeadSet{
 
         let scrw = match self.device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_HORIZONTAL_RESOLUTION){
             Some(x) => x,
-            _ => 1024
+            _ => 1280
         } as u32;
         let scrh = match self.device.geti(openhmd_rs::ohmd_int_value::OHMD_SCREEN_VERTICAL_RESOLUTION){
             Some(x) => x,
-            _ => 768
+            _ => 800
         } as u32;
 
         // Calculating HMD params
         let scr_size_w = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_HORIZONTAL_SIZE){
             Some(x) => x[0],
-            _ => 1.0
+            _ => 0.149760
         };
         let scr_size_h = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_SCREEN_VERTICAL_SIZE ){
             Some(x) => x[0],
-            _ => 1.0
+            _ => 0.093600
         };
         let distortion_k = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_UNIVERSAL_DISTORTION_K ){
             Some(x) => [x[0], x[1], x[2], x[3]],
@@ -70,15 +70,15 @@ impl ohmdHeadSet{
 
         let sep = match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_HORIZONTAL_SEPARATION ){
             Some(x) => x[0],
-            _ => 1.0
+            _ => 0.063500
         };
         let mut left_lens_center: [f32; 2] = [0.0, match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION){
             Some(x) => x[0],
-            _ => 1.0
+            _ => 0.046800
         }];
         let mut right_lens_center: [f32; 2] = [0.0, match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LENS_VERTICAL_POSITION){
             Some(x) => x[0],
-            _ => 1.0
+            _ => 0.046800
         }];
 
         let oproj = m16_to_4x4( match self.device.getf(openhmd_rs::ohmd_float_value::OHMD_LEFT_EYE_GL_PROJECTION_MATRIX){
