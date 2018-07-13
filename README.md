@@ -7,7 +7,7 @@
 * WARNING: I doing full rewrite of OpenHMD-Chat right now, so you can't compile game
 
 # OpenHMD-Chat
-OpenHMD-Chat is a Social VR experement. It's crossplatform, open source, and written on Rust.
+OpenHMD-Chat is a crossplatform and opensource social VR app that can be used for voice chatting in virtual reality.
 
 # How to compile?
 Run `cargo run --release` in main directory, or `cargo build --release` and then move openhmd-chat from /target/release/ to main directory
@@ -18,21 +18,16 @@ I made OpenHMD binding for Rust. Also, it most easy to use library and it open s
 # Why Rust?
 I think it best programming language for games, it easy to use and fast
 
-# TO DO
-Voice communication (90%)
-
-GUI (20%)
-
-Text chat (0%)
-
-Command Line Arguments (40%)
-
-Ability to move around (40%)
-
-Gamepad support (50%)
-
-Ability to create worlds(40%)
-
-Animations(0%)
-
-VR Controllers support(0%)
+### Road map
+- [ ] Rendering
+  - [ ] OBJ loader
+  - [ ] Mesh rendering
+  - [ ] Texture rendering
+  - [ ] Camera
+- [ ] VR (OpenHMD)
+  - [ ] VR rendering
+  - [ ] VR gui
+  - [ ] VR controls
+- [ ] Assets loading from URL
+- [ ] Sync of player's position and rotation
+- [x] Voice Chat
