@@ -83,7 +83,6 @@ impl AudioWrapper{
                 capture.capture_samples(&mut buffer_i16).unwrap();
                 let encoded = opus_encoder.encode_vec(&buffer_i16, sample_rate as usize).unwrap();
                 let _ = network_tx.send(encoded);
-                println!("frame");
                 thread::sleep(time::Duration::from_millis(1));
             }
         });

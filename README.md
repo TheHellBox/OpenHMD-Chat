@@ -4,7 +4,7 @@
 
 <a href="https://www.youtube.com/watch?v=GxrDkl84yh0">video</a>
 
-* WARNING: I doing full rewrite of OpenHMD-Chat right now, so you can't compile game right now *
+* WARNING: I doing full rewrite of OpenHMD-Chat right now, so you can't compile game
 
 # OpenHMD-Chat
 OpenHMD-Chat is a Social VR experement. It's crossplatform, open source, and written on Rust.
