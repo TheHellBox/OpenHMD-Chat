@@ -1,6 +1,10 @@
+
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate glium;
 
+extern crate tobj;
 extern crate clap;
 extern crate opus;
 extern crate alto;
@@ -9,10 +13,12 @@ extern crate cobalt;
 extern crate bincode;
 
 mod audio;
+mod render;
 mod network;
+mod support;
 
 use std::{thread, time};
-use clap::{Arg, App, SubCommand};
+use clap::{Arg, App};
 
 fn main() {
     println!("Hello, world!");
@@ -44,7 +50,11 @@ fn main() {
         network.init(tx_audio.clone());
     });
 
+    let mut window = render::Window::new(1024, 768, "Test");
+    window.init();
+
     loop{
+        window.draw();
         thread::sleep(time::Duration::from_millis(1));
     }
 }
