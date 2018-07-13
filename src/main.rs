@@ -1,211 +1,50 @@
 #[macro_use]
-pub extern crate glium;
-#[macro_use]
-pub extern crate bytevec;
+extern crate serde_derive;
 
-pub extern crate image;
-pub extern crate openhmd_rs;
-pub extern crate nalgebra;
-pub extern crate cobalt;
-pub extern crate rand;
-pub extern crate gilrs;
-pub extern crate alto;
-pub extern crate opus;
-pub extern crate json;
-pub extern crate ncollide;
+extern crate clap;
+extern crate opus;
+extern crate alto;
+extern crate serde;
+extern crate cobalt;
+extern crate bincode;
 
-mod render;
-mod support;
-mod network;
-mod player;
 mod audio;
-mod vr_gui;
-mod gameplay;
-mod openhmd;
-mod math;
+mod network;
 
-use render::window::Window;
+use std::{thread, time};
+use clap::{Arg, App, SubCommand};
 
-fn main(){
-    //Some include stuff
-    use std::env;
-    use nalgebra::geometry::UnitQuaternion;
-    use nalgebra::geometry::Quaternion;
-    use rand::Rng;
-    use std::collections::HashMap;
-    use std::time::SystemTime;
-    use std::thread;
-    use std::sync::mpsc::{channel, sync_channel};
-    use gilrs::{Gilrs};
-    use audio::AudioMsg;
-    use render::window::RenderMode;
-    use std::io::prelude::*;
-    use std::fs::File;
-    //Some other stuff...
-    let args: Vec<_> = env::args().collect();
-    let mut scrw: u32 = 1024;
-    let mut scrh: u32 = 768;
-    let ip = {
-        if args.len() > 1 {
-            args[1].clone()
-        }
-        else{
-            println!("Please, enter IP. Example: ./openhmdchat ip:port");
-            "127.0.0.1:4587".to_string()
-        }
-    };
-    let mut vrmode = RenderMode::VR;
-    let hmdid = {
-        if args.len() > 2 {
-            vrmode = RenderMode::Desktop;
-            1
-        }
-        else{
-            vrmode = RenderMode::VR;
-            0
-        }
-    };
-    //Create communication channels. FIXME: Move all this MPSC stuff away from main
-    let (tx_player, rx_player) = channel::<player::Player>();
-    let (tx_mapobj, rx_mapobj) = channel::<(Option<support::map_loader::MapObject>, Option<support::map_loader::Collider>)>();
-    let (tx_players, rx_players) = channel::<HashMap<u32, player::Player>>();
-    let (tx_orient, rx_orient) = channel::<((f32,f32,f32,f32), (f32,f32,f32))>();
-    let (tx_netsound_in, rx_netsound_in) = channel::<AudioMsg>();
-    let (tx_netsound_out, rx_netsound_out) = channel::<AudioMsg>();
-    //Init OpenHMD
-    let hmd = openhmd::ohmdHeadSet::new(hmdid);
-    hmd.context.update();
-    let hmd_params = hmd.gen_cfg();
-    let (h_scr_w, h_scr_h) = hmd_params.scr_res;
-    scrw = h_scr_w;
-    scrh = h_scr_h;
-    println!("HMD scrw res {}", scrw);
-    println!("HMD scrh res {}", scrh);
+fn main() {
+    println!("Hello, world!");
 
-    //Creating playerlist
-    let mut playerlist: HashMap<u32, player::Player>  = HashMap::with_capacity(128);
-    //Opening window
-    println!("Opening window...");
-    let mut window = Window::new(scrw,scrh, "test", &vrmode);
+    let matches = App::new("OpenHMD-Chat")
+        .version("0.1")
+        .author("The HellBox <thehellbox11@gmail.com>")
+        .about("Online chat for VR")
+        .arg(Arg::with_name("addr")
+            .short("a")
+            .long("addr")
+            .help("Sets addr to connect to")
+            .takes_value(true))
+        .get_matches();
 
-    let (display, mut events_loop) = window.get_display();
-    //Building shaders
-    println!("Building shaders...");
-    let program = glium::Program::from_source(&display.display, &render::SHADER_SIMPLE_VERT, &render::SHADER_SIMPLE_FRAG, None).unwrap();
-    println!("Building OHMD distortion correction shader...");
-    let ohmd_dis_shaders = glium::Program::from_source(&display.display, &render::SHADER_DISTORTION_VERT, &render::SHADER_DISTORTION_FRAG, None).unwrap();
+    let addr = matches.value_of("addr").unwrap_or("127.0.0.1:4460").to_string();
 
-    println!("Done!");
-    //Loading some assets
-    let mesh_buffer = support::obj_model_loader::gen_buffer(&display.display);
-    let texture_buffer = support::texture_loader::gen_texture_buffer(&display.display);
-    let render_obj_buffer: HashMap<u32, render::RenderObject> = HashMap::with_capacity(1024);
+    let frames = 1280;
+    let sample_rate = 16000;
 
-    //Creating buffers and other stuff
-    let mut render_data = render::RenderData{
-        mesh_buf: mesh_buffer,
-        texture_buf: texture_buffer,
-        render_obj_buf: render_obj_buffer,
-    };
+    let mut network = network::Network::new();
+    let net_tx = network.tx.clone();
 
-    let mut camera = render::camera::Camera::new();
-    //gamepad stuff
-    let mut gilrs = Gilrs::new().unwrap();
+    let audio = audio::AudioWrapper::new().unwrap();
+    let tx_audio = audio.init(sample_rate, frames, net_tx);
 
-    let mut vr_gui = vr_gui::VRGui::new();
-    let test_element = vr_gui::Element::new((3.0,0.0), (1.0,2.0), (false, "./assets/textures/test.png".to_string()), vr_gui::ElementType::Panel);
-    let test_element2 = vr_gui::Element::new((0.0,0.0), (1.0,1.0), (false, "./assets/textures/test.png".to_string()), vr_gui::ElementType::Panel);
-    vr_gui.push_element(test_element);
-    vr_gui.push_element(test_element2);
+    thread::spawn(move || {
+        network.connect(addr);
+        network.init(tx_audio.clone());
+    });
 
-    //Generating random player position
-    let posx = rand::thread_rng().gen_range(-7.0, 7.0);
-    let posy = 0.0;
-    let posz = rand::thread_rng().gen_range(-7.0, 7.0);
-
-    let mut local_player = player::LocalPlayer::new((posx,posy,posz));
-
-    // Audio stuff
-    let audio_wrapper = audio::AudioWrapper::new();
-    if audio_wrapper.is_ok(){
-        let mut audio_wrapper = audio_wrapper.unwrap();
-        audio_wrapper.start_threads(tx_netsound_in, rx_netsound_out, rx_players);
-    }
-    else{
-        println!("Failed to init audio");
-    }
-    let mut dbvt = ncollide::partitioning::DBVT::new();
-
-    network::start_net_thread(ip, tx_player, tx_mapobj, tx_netsound_out, rx_orient, rx_netsound_in);
-    //Starting main loop
     loop{
-        let sys_time = SystemTime::now();
-        hmd.context.update();
-        let map_objects = rx_mapobj.try_iter();
-        for x in map_objects{
-            if x.0.is_some(){
-                let x = x.0.unwrap();
-                let mut new_object = render::RenderObject{
-                    mesh_name: x.model.clone(),
-                    tex_name: x.texture.clone(),
-                    position: x.position,
-                    rotation: x.rotation,
-                    scale: (1.0, 1.0, 1.0),
-                    visible: true,
-                };
-                println!("{:?}", x);
-                render_data.render_obj_buf.insert(rand::thread_rng().gen_range(10000, 900000), new_object);
-            }
-            if x.1.is_some(){
-                let x = x.1.unwrap();
-                let cube = ncollide::shape::Cuboid::new(nalgebra::Vector3::new(x.scale.0, x.scale.1, x.scale.2));
-                let pos = nalgebra::Isometry3::new(nalgebra::Vector3::new(x.position.0, x.position.1, x.position.2), nalgebra::zero());
-                let bound_vol = ncollide::bounding_volume::bounding_sphere::<nalgebra::Point3<f32>, _, _>(&cube, &pos);
-                let dbvt_leaf = ncollide::partitioning::DBVTLeaf::new(bound_vol, (pos, x.scale));
-                dbvt.insert(dbvt_leaf);
-                println!("{:?}", x);
-            }
-        }
-        let (posx, posy, posz) = local_player.position;
-
-        let ohmd_orient = match hmd.device.getf(openhmd_rs::ohmd_float_value::OHMD_ROTATION_QUAT){
-            Some(x) => [x[0], x[1], x[2], x[3]],
-            _ => [0.0,0.0,0.0,0.0]
-        };
-        let orient = UnitQuaternion::from_quaternion(Quaternion::new(-ohmd_orient[0], ohmd_orient[1], ohmd_orient[2], -ohmd_orient[3])) * camera.view.rotation;
-
-        gameplay::update(&mut gilrs, &mut local_player, &mut render_data, &orient, &mut dbvt, &mut events_loop);
-
-        let data = rx_player.try_iter();
-        for data in data{
-            let (x,y,z,w) = data.rotation;
-            let mut new_player = render::RenderObject{
-                mesh_name: "./assets/models/player.obj".to_string(),
-                tex_name: "./assets/textures/test.png".to_string(),
-                position: data.position,
-                rotation: (x,y,z,w),
-                scale: (1.0, 1.0, 1.0),
-                visible: true
-            };
-            render_data.render_obj_buf.insert(data.id, new_player);
-            playerlist.insert(data.id, data);
-            let _ = tx_players.send(playerlist.clone());
-        }
-
-        vr_gui.update(&mut render_data, local_player.position);
-
-        let cam_rot = UnitQuaternion::from_quaternion(Quaternion::new(local_player.camera_rotation.0, local_player.camera_rotation.1,
-            local_player.camera_rotation.2,local_player.camera_rotation.3));
-
-        camera.set_pos(nalgebra::Vector3::new(local_player.camera_position.0, local_player.camera_position.1, local_player.camera_position.2));
-        camera.set_rot(cam_rot);
-        //Render
-        display.draw(&render_data, &program, &ohmd_dis_shaders, &hmd.device, &camera, (scrw, scrh), &vrmode, &hmd_params);
-
-        let _ = tx_orient.send(((orient[0], -orient[1], -orient[2], orient[3]),
-                                (posx,posy,posz)));
-        let elapsed = sys_time.elapsed().unwrap();
-        /*let fps = 1000.0 / (((elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64) as f32 + 0.01);
-        println!("FPS: {}", fps as u32);*/
+        thread::sleep(time::Duration::from_millis(1));
     }
 }

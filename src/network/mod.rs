@@ -1,49 +1,33 @@
-pub mod client_params;
+use opus;
+use std::{thread, time};
+use audio::AudioEvent;
+use std::sync::mpsc::{channel, Sender, Receiver};
+use bincode::{serialize, deserialize};
 
-use player;
-use support;
-use cobalt;
+#[derive(Serialize, Deserialize)]
+enum MessageType{
+    EncodedAudio(Vec<u8>, u32),
+    PlayerConnected(u32),
+    AudioEvent(Vec<u8>),
+    ServerInfo(Vec<u8>),
+}
 
-use bytevec::{ByteEncodable, ByteDecodable};
-use std::sync::mpsc;
-use audio::AudioMsg;
-use std::sync::mpsc::channel;
+#[derive(Serialize, Deserialize)]
+pub struct ServerInfo{
+    players: Vec<u32>,
+    send_rate: u32,
+    audio_quality: u32,
+}
 
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
     Client, ClientEvent
 };
 
-pub struct Network {
+pub struct Network{
     client: Client<UdpSocket, BinaryRateLimiter, NoopPacketModifier>,
-    //                   Data  Type  MessageKind
-    pub tx: mpsc::Sender<(Vec<u8>, u8, MessageKind)>,
-    pub rx: mpsc::Receiver<(Vec<u8>, u8, MessageKind)>,
-
-    //                   Data  Type
-    pub tx_back: mpsc::Sender<(Vec<u8>, u8)>,
-    pub rx_back: mpsc::Receiver<(Vec<u8>, u8)>,
-
-}
-
-#[derive(PartialEq, Debug, Default, Clone)]
-pub struct NetAudio {
-    pub data: Vec<u8>,
-    pub id: u32
-}
-bytevec_impls! {
-    impl NetAudio {
-        data: Vec<u8>,
-        id: u32
-    }
-}
-impl NetAudio {
-    pub fn to_network(&self) -> Vec<u8>{
-        self.encode::<u8>().unwrap()
-    }
-    pub fn from_network(message: Vec<u8>) -> NetAudio{
-        NetAudio::decode::<u8>(&message).unwrap()
-    }
+    pub tx: Sender<Vec<u8>>,
+    rx: Receiver<Vec<u8>>
 }
 
 impl Network {
@@ -51,155 +35,62 @@ impl Network {
         use std::time::Duration;
 
         let mut config = Config::default();
-        let (tx, rx) = channel::<(Vec<u8>, u8, MessageKind)>();
-        let (tx_back, rx_back) = channel::<(Vec<u8>, u8)>();
-        config.connection_closing_threshold = Duration::from_millis(5000);
+        let (tx, rx) = channel::<Vec<u8>>();
+
+        config.connection_closing_threshold = Duration::from_millis(15000);
         config.connection_drop_threshold = Duration::from_millis(5000);
-        config.connection_init_threshold = Duration::from_millis(5000);
+        config.connection_init_threshold = Duration::from_millis(15000);
         config.send_rate = 1024;
         let client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
         Network{
-            client: client,
-            tx: tx,
-            rx: rx,
-            tx_back: tx_back,
-            rx_back: rx_back,
+            client,
+            tx,
+            rx
         }
     }
+
     pub fn connect(&mut self, addr: String){
         self.client.connect(addr).expect("Failed to bind to socket.");
     }
-    pub fn check(&mut self, tx: &mpsc::Sender<player::Player>, tx_mobj: &mpsc::Sender<(Option<support::map_loader::MapObject>, Option<support::map_loader::Collider>)>
-                , txsound: &mpsc::Sender<AudioMsg>, player: &player::Player){
-        use nalgebra::geometry::UnitQuaternion;
-        use nalgebra::geometry::Quaternion;
 
-        while let Ok(event) = self.client.receive() {
-            match event {
-                ClientEvent::Message(message) => {
-                    match message[0]{
-                        0 => println!("{:?}", &message[1..message.len()]),
-                        1 => println!("{:?}", &message[1..message.len()]),
-                        2 => {
-                            let player = player::Player::from_network(message[1..message.len()].to_vec());
-                            let _ = tx.send(player);
-                        },
-                        //Sound
-                        3 => {
-                            let (rotx, roty, rotz, rotw) = player.rotation;
-                            let (rotx, roty, rotz) = UnitQuaternion::from_quaternion(Quaternion::new(rotx, roty, rotz, rotw)).to_euler_angles();
-                            let mut data = NetAudio::from_network(message[1..message.len()].to_vec());
-                            let _ = txsound.send(AudioMsg{
-                                data: data.data,
-                                player_position: player.position,
-                                player_rotation: (rotx, roty, rotz),
-                                source_id: data.id,
-                            });
-                        },
-                        //Map object
-                        4 => {
-                            let object = support::map_loader::MapObject::from_network(message[1..message.len()].to_vec());
-                            let _ = tx_mobj.send((Some(object), None));
-                        },
-                        //Write file
-                        5 => {
-                            let msg = message[1..message.len()].to_vec();
-                            self.tx_back.send((msg, 0));
-                        },
-                        6 => {
-                            let collider = support::map_loader::Collider::from_network(message[1..message.len()].to_vec());
-                            let _ = tx_mobj.send((None, Some(collider)));
-                        },
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        }
-        //FIXME: Poor code... Maybe...
-        let mut msgs = vec![];
-        {
-            for x in self.rx.try_iter(){
-                msgs.push(x);
-            }
-        }
-        for x in msgs{
-            let (data, type_d, msgk) = x;
-            self.send(data, type_d, msgk);
-        }
-        self.client.send(true).is_ok();
-    }
-
-    pub fn send(&mut self, msg: Vec<u8>, type_d: u8, type_m: MessageKind){
-        let mut msg = msg;
-        msg.insert(0, type_d);
-        let conn = self.client.connection().unwrap();
-        conn.send(type_m, msg);
-    }
-}
-
-pub fn start_net_thread(ip: String, tx_player: mpsc::Sender<player::Player>,
-                        tx_mapobj: mpsc::Sender<(Option<support::map_loader::MapObject>, Option<support::map_loader::Collider>)>,
-                        tx_netsound_out: mpsc::Sender<AudioMsg>,
-                        rx_orient: mpsc::Receiver<((f32,f32,f32,f32), (f32,f32,f32))>, rx_netsound_in: mpsc::Receiver<AudioMsg>)
-                        {
-    use std::thread;
-    thread::spawn(move || {
-        let params = client_params::ClParams::new();
-        let mut client = Network::new();
-        println!("Connecting to server...");
-        //Conecting to server
-        client.connect(ip);
-
-        //Spawning player.
-        let mut player = player::Player{
-            id: 0,
-            position: (0.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 1.0, 0.0),
-            model: "./assets/player.obj".to_string(),
-            name: "None".to_string()
-        };
-
-        client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
-        println!("Sending client info...");
-        let params = params.to_network();
-        client.send(params, 4, cobalt::MessageKind::Reliable);
-        let mut file_writer = support::file_writer::FileWriter::new("temp".to_string());
-        let mut timer = support::timer::Timer::new(100);
+    pub fn init(&mut self, tx_audio: Sender<AudioEvent>){
+        let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
         loop{
-            let data = rx_orient.try_iter();
-            for data in data{
-                let (rot, pos) = data;
-                player.rotation = rot;
-                player.position = pos;
-            }
-            let netsound = rx_netsound_in.try_iter();
-            for x in netsound{
-                let netsound = x;
-                let data = NetAudio{
-                    data: netsound.data,
-                    id: player.id
-                };
-                client.send(data.to_network(), 3, cobalt::MessageKind::Instant);
-            }
-            if timer.get() {
-                timer.reset();
-                client.send(player.to_network(), 2, cobalt::MessageKind::Instant);
-            }
-            client.check(&tx_player,&tx_mapobj, &tx_netsound_out, &player);
-            let back_data = client.rx_back.try_iter();
-            for (x, type_d) in back_data{
-                if x.starts_with(&vec![233, 144, 122, 198, 134, 253, 251]){
-                    file_writer = support::file_writer::FileWriter::new(String::from_utf8(x[7..x.len()].to_vec()).unwrap());
-                    println!("Downloading {}", String::from_utf8(x[7..x.len()].to_vec()).unwrap());
-                }
-                else if x.starts_with(&vec![100, 137, 211, 233, 212, 222]){
-                    //render_data.mesh_buf.insert()
-                }
-                else{
-                    file_writer.write((&x).to_owned());
+            if let Some(x) = self.rx.try_iter().last(){
+                if let Ok(conn) = self.client.connection() {
+                    conn.send(MessageKind::Instant, x);
                 }
             }
+
+            while let Ok(event) = self.client.receive() {
+                match event {
+                    ClientEvent::Message(message) => {
+                        let decoded: MessageType = deserialize(&message).unwrap();
+                        match decoded{
+                            MessageType::EncodedAudio(data, id) => {
+                                let mut decode = vec![0i16; 1280];
+                                opus_decoder.decode(&data, &mut decode, false).unwrap();
+                                let _ = tx_audio.send(AudioEvent::Play(decode, 16000, format!("player{}", id)));
+                            },
+                            MessageType::PlayerConnected(id) => {
+                                let _ = tx_audio.send(AudioEvent::AddSource(format!("player{}", id).to_string()));
+                            },
+                            MessageType::ServerInfo(data) => {
+                                println!("Connected!");
+                                let server_info: ServerInfo = deserialize(&data).unwrap();
+                                for x in server_info.players{
+                                    println!("{}", x);
+                                    let _ = tx_audio.send(AudioEvent::AddSource(format!("player{}", x).to_string()));
+                                }
+                            },
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            }
+            self.client.send(true).is_ok();
+            thread::sleep(time::Duration::from_millis(1));
         }
-    });
+    }
 }
