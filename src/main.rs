@@ -9,6 +9,7 @@ extern crate clap;
 extern crate opus;
 extern crate alto;
 extern crate serde;
+extern crate image;
 extern crate cobalt;
 extern crate bincode;
 
@@ -52,6 +53,8 @@ fn main() {
 
     let mut window = render::Window::new(1024, 768, "Test");
     window.init();
+
+    let test_model = window.load_model("./assets/cube.obj".to_string());
 
     loop{
         window.draw();

@@ -3,7 +3,7 @@ use glium::{glutin, Display, Program};
 use std::collections::HashMap;
 
 pub mod draw;
-pub mod mesh;
+pub mod model;
 pub mod default_shaders;
 
 #[derive(Copy, Clone)]

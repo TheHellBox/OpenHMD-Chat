@@ -1,10 +1,14 @@
 use glium::{ Surface, VertexBuffer, IndexBuffer, Program, DrawParameters};
 use glium::index::PrimitiveType;
 use render::{Vertex2D, DrawArea, Window};
-use render::mesh::Model;
+use render::model::Model;
+
+pub struct Draw_Object{
+    model: Model
+}
 
 pub struct Draw_Buffer{
-    pub models: Vec<Model>
+    pub models: Vec<Draw_Object>
 }
 
 impl Window{
@@ -22,7 +26,9 @@ impl Window{
             picking_target.clear_color_and_depth((0.2, 0.2, 0.4, 1.0), 1.0);
             let vertex_buf = self.box_vert_buf();
             let index_buffer = IndexBuffer::new(&self.display, PrimitiveType::TriangleStrip, &[1 as u16, 2, 0, 3]).unwrap();
+            for x in &self.draw_buffer.models{
 
+            }
             let mat =
                 [[x.size.0, 0.0, 0.0, 0.0],
                 [0.0, x.size.1, 0.0, 0.0],

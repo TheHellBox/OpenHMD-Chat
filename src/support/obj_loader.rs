@@ -1,17 +1,32 @@
 use tobj;
+use glium::Display;
 use render::Vertex;
+use render::model::*;
+use support::texture_loader;
+use glium::vertex::VertexBuffer;
 
-pub fn load(data: String) -> Vec<Vertex> {
+pub fn load(data: String, disp: &Display) -> Model{
     use std::path::Path;
+
     let raw = tobj::load_obj(&Path::new(&data));
     let (models, materials) = raw.unwrap();
-    let mut vertex_data = Vec::new();
-    for x in materials{
-        println!("{?}", x.diffuse_texture);
-    }
+    let mut meshes = vec![];
     for model in &models {
+        let mut vertex_data = Vec::new();
         let mesh = &model.mesh;
-        let material = mesh.material_id;
+        let mut material_id = 999;
+        if let Some(x) = mesh.material_id{
+            material_id = x
+        };
+        let material: tobj::Material = {
+            if material_id != 999{
+                materials[material_id].clone()
+            }
+            else{
+                tobj::Material::empty()
+            }
+        };
+        let diffuse_texture = material.diffuse_texture;
         for idx in &mesh.indices {
             let i = *idx as usize;
             let pos = [mesh.positions[3 * i], mesh.positions[3 * i + 1], mesh.positions[3 * i + 2]];
@@ -33,6 +48,15 @@ pub fn load(data: String) -> Vec<Vertex> {
                 tex_coords: texcord
             });
         }
+        let texture = texture_loader::load(diffuse_texture, disp);
+        let vert_buf = VertexBuffer::new(disp, &vertex_data).unwrap().into_vertex_buffer_any();
+        let mesh = Mesh{
+            mesh: vert_buf,
+            texture
+        };
+        meshes.push(mesh);
     }
-    vertex_data
+    Model{
+        meshes
+    }
 }
