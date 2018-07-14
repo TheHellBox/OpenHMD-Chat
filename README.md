@@ -14,11 +14,11 @@ Run `cargo run --release` in main directory, or `cargo build --release` and then
 
 
 ### Road map
-- [ ] Rendering
-  - [ ] OBJ loader
-  - [ ] Mesh rendering
-  - [ ] Texture rendering
-  - [ ] Camera
+- [x] Rendering
+  - [x] OBJ loader
+  - [x] Mesh rendering
+  - [x] Texture rendering
+  - [x] Camera
 - [ ] VR (OpenHMD)
   - [ ] VR rendering
   - [ ] VR gui

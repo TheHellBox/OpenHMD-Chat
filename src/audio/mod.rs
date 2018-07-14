@@ -110,7 +110,7 @@ impl AudioWrapper{
                         _ => {}
                     }
                 }
-                for (name, src) in &mut sources{
+                for (_, src) in &mut sources{
                     if src.state() != SourceState::Playing {
                         let _ = src.unqueue_buffer();
                         src.play()

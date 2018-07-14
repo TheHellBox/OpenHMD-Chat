@@ -2,9 +2,10 @@ use glium::glutin::{ContextBuilder, EventsLoop, WindowBuilder, dpi};
 use glium::{glutin, Display, Program};
 use std::collections::HashMap;
 
-pub mod draw;
-pub mod model;
 pub mod default_shaders;
+pub mod camera;
+pub mod model;
+pub mod draw;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -21,6 +22,7 @@ pub struct Vertex2D {
 implement_vertex!(Vertex2D, position);
 
 pub struct DrawArea{
+    camera: camera::Camera,
     res: (u32, u32),
     size: (f32, f32),
     pos: (f32, f32),
@@ -57,15 +59,16 @@ impl Window{
             draw_areas,
             shaders: HashMap::with_capacity(128),
             draw_buffer: draw::Draw_Buffer{
-                models: vec![]
+                objects: vec![]
             }
         }
     }
     pub fn init(&mut self){
         println!("Loading shaders...");
+        let camera = camera::Camera::new(1920, 1080);
         self.add_shader("simple", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SIMPLE_FRAG);
         self.add_shader("solid", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SOLID_FRAG);
         self.add_shader("solid_2d", default_shaders::SHADER_SIMPLE_2D_VERT, default_shaders::SHADER_SOLID_FRAG);
-        self.add_draw_area((1920, 1080), (2.0, 2.0), (-1.0, -1.0), false);
+        self.add_draw_area(camera, (1920, 1080), (2.0, 2.0), (-1.0, -1.0), false);
     }
 }

@@ -2,7 +2,7 @@ use opus;
 use std::{thread, time};
 use audio::AudioEvent;
 use std::sync::mpsc::{channel, Sender, Receiver};
-use bincode::{serialize, deserialize};
+use bincode::{deserialize};
 
 #[derive(Serialize, Deserialize)]
 enum MessageType{
