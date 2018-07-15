@@ -13,6 +13,7 @@ extern crate image;
 extern crate cobalt;
 extern crate bincode;
 extern crate nalgebra;
+extern crate openhmd_rs;
 
 mod audio;
 mod render;
@@ -53,13 +54,14 @@ fn main() {
         network.init(tx_audio.clone());
     });
 
-    let mut window = render::Window::new(1024, 768, "Test");
-    window.init();
+    let mut window = render::Window::new(1920, 1080, "Test", true);
+    window.init_vr(1920, 1080);
 
-    let test_model = window.load_model("./assets/cube.obj".to_string());
-    window.add_draw_object(test_model, Point3::new(0.0, 0.0, 0.0), UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.0, 0.0, 1.0)), (1.0, 1.0, 1.0));
+    let test_model = window.load_model("./assets/models/scene.obj".to_string());
+    window.add_draw_object(test_model, Point3::new(0.0, 5.0, 0.0), UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.707, 0.0, 0.707)), (1.0, 1.0, 1.0));
     loop{
         window.draw();
+        window.update_vr();
         thread::sleep(time::Duration::from_millis(1));
     }
 }

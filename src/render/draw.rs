@@ -1,4 +1,4 @@
-use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion, Translation3};
+use nalgebra::geometry::{Point3, UnitQuaternion, Translation3};
 use glium::{ Surface, VertexBuffer, IndexBuffer, Program, DrawParameters};
 use render::{Vertex2D, DrawArea, Window};
 use glium::index::PrimitiveType;
@@ -6,15 +6,15 @@ use nalgebra::core::{Matrix4};
 use glium::index::NoIndices;
 use render::camera::Camera;
 use render::model::Model;
-pub struct Draw_Object{
+pub struct DrawObject{
     model: Model,
     position: Point3<f32>,
     rotation: UnitQuaternion<f32>,
     scale: (f32, f32, f32)
 }
 
-pub struct Draw_Buffer{
-    pub objects: Vec<Draw_Object>
+pub struct DrawBuffer{
+    pub objects: Vec<DrawObject>
 }
 
 impl Window{
@@ -23,7 +23,7 @@ impl Window{
         use glium::texture::{DepthTexture2d, Texture2d, DepthFormat, UncompressedFloatFormat, MipmapsOption};
         let mut target = self.display.draw();
         target.clear_color_and_depth((0.2, 0.2, 0.4, 1.0), 1.0);
-        for x in &self.draw_areas{
+        for (_, x) in &self.draw_areas{
             let depthtexture = DepthTexture2d::empty_with_format(&self.display, DepthFormat::F32, MipmapsOption::NoMipmap, x.res.0, x.res.1).unwrap();
             let area_tex = Texture2d::empty_with_format(&self.display, UncompressedFloatFormat::F32F32F32F32, MipmapsOption::NoMipmap, x.res.0, x.res.1).unwrap();
 
@@ -73,7 +73,7 @@ impl Window{
         let program = Program::from_source(&self.display, vert, frag, None).unwrap();
         self.shaders.insert(name, program);
     }
-    pub fn add_draw_area(&mut self, camera: Camera, res: (u32, u32), size: (f32, f32), pos: (f32, f32), distortion_shader: bool){
+    pub fn add_draw_area(&mut self, name: String, camera: Camera, res: (u32, u32), size: (f32, f32), pos: (f32, f32), distortion_shader: bool){
         let draw_area = DrawArea{
             camera,
             res,
@@ -81,11 +81,11 @@ impl Window{
             pos,
             distortion_shader
         };
-        self.draw_areas.push(draw_area);
+        self.draw_areas.insert(name, draw_area);
     }
     pub fn add_draw_object(&mut self, model: Model, position: Point3<f32>, rotation: UnitQuaternion<f32>, scale: (f32, f32, f32)){
         self.draw_buffer.objects.push(
-            Draw_Object{
+            DrawObject{
                 model,
                 position,
                 rotation,
@@ -106,7 +106,7 @@ impl Window{
     }
 }
 
-impl Draw_Object{
+impl DrawObject{
     pub fn calc_transform(&self) -> Matrix4<f32>{
         let scale_matrix: Matrix4<f32> = Matrix4::new(
             self.scale.0 as f32, 0.0, 0.0, 0.0,
