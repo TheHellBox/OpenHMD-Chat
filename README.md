@@ -20,7 +20,7 @@ Run `cargo run --release` in main directory, or `cargo build --release` and then
   - [x] Texture rendering
   - [x] Camera
 - [ ] VR (OpenHMD)
-  - [ ] VR rendering
+  - [x] VR rendering
   - [ ] VR gui
   - [ ] VR controls
 - [ ] Assets loading from URL

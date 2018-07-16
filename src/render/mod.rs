@@ -91,15 +91,30 @@ impl Window{
         }
     }
     pub fn init(&mut self){
+        let mut vr = false;
+
         println!("Loading shaders...");
-        let camera = camera::Camera::new(1024, 768);
         self.add_shader("simple", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SIMPLE_FRAG);
         self.add_shader("solid", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SOLID_FRAG);
         self.add_shader("solid_2d", default_shaders::SHADER_SIMPLE_2D_VERT, default_shaders::SHADER_SOLID_FRAG);
-        self.add_draw_area("default".to_string(), camera, (1024, 768), (2.0, 2.0), (-1.0, -1.0), false);
+
+        let mut scr_w = 1024;
+        let mut scr_h = 768;
+
+        if let &Some(ref ohmd_device) = &self.ohmd_device{
+            scr_w = ohmd_device.get_scr_res_w();
+            scr_h = ohmd_device.get_scr_res_h();
+            vr = true;
+        }
+        let camera = camera::Camera::new(1024, 768);
+        if !vr {
+            self.add_draw_area("default".to_string(), camera, (scr_w, scr_h), (2.0, 2.0), (-1.0, -1.0), false);
+        }
+        else{
+            self.init_vr(scr_w, scr_h);
+        }
     }
     pub fn init_vr(&mut self, hmd_x: u32, hmd_y: u32){
-        println!("Loading shaders...");
         let mut camera = camera::Camera::new(hmd_x / 2, hmd_y);
         let mut camera2 = camera::Camera::new(hmd_x / 2, hmd_y);
         if let &mut Some(ref mut ohmd_device) = &mut self.ohmd_device{
@@ -115,9 +130,6 @@ impl Window{
             camera.perspective = proj_l;
             camera2.perspective = proj_r;
         }
-        self.add_shader("simple", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SIMPLE_FRAG);
-        self.add_shader("solid", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SOLID_FRAG);
-        self.add_shader("solid_2d", default_shaders::SHADER_SIMPLE_2D_VERT, default_shaders::SHADER_SOLID_FRAG);
         self.add_draw_area("vr_cam_left".to_string(), camera, (hmd_x / 2, hmd_y), (1.0, 2.0), (-1.0, -1.0), false);
         self.add_draw_area("vr_cam_right".to_string(), camera2, (hmd_x / 2, hmd_y), (1.0, 2.0), (0.0, -1.0), false);
     }
@@ -134,7 +146,6 @@ impl Window{
                 let view: Matrix4<f32> = mat16_to_nalg(ohmd_device.get_view_matrix_l());
                 eye_left.camera.view = view * chrctr_view;
                 eye_left.camera.perspective = proj_l;
-                println!("{:?}", eye_left.camera.perspective);
             }
             {
                 let eye_right = self.draw_areas.get_mut("vr_cam_right").unwrap();

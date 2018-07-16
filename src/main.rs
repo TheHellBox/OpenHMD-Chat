@@ -36,9 +36,19 @@ fn main() {
             .long("addr")
             .help("Sets addr to connect to")
             .takes_value(true))
+        .arg(Arg::with_name("vr")
+            .short("v")
+            .long("vr")
+            .help("VR mode"))
         .get_matches();
 
+    let mut vr_mode = false;
+
     let addr = matches.value_of("addr").unwrap_or("127.0.0.1:4460").to_string();
+    let vr = matches.values_of_lossy("vr");
+    if vr.is_some(){
+        vr_mode = true;
+    }
 
     let frames = 1280;
     let sample_rate = 16000;
@@ -54,8 +64,8 @@ fn main() {
         network.init(tx_audio.clone());
     });
 
-    let mut window = render::Window::new(1920, 1080, "Test", true);
-    window.init_vr(1920, 1080);
+    let mut window = render::Window::new(1024, 768, "Test", vr_mode);
+    window.init();
 
     let test_model = window.load_model("./assets/models/scene.obj".to_string());
     window.add_draw_object(test_model, Point3::new(0.0, 5.0, 0.0), UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.707, 0.0, 0.707)), (1.0, 1.0, 1.0));
