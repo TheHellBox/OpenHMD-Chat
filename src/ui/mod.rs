@@ -5,8 +5,8 @@ use support;
 use glium::{Display, Surface};
 use glium::texture::Texture2d;
 use conrod::{widget, Positionable, Widget, Colorable, Sizeable, Labelable};
+// I still don't really understand how conrod works, so this code can be pretty terrible
 widget_ids!(pub struct Ids { text, button, canvas, cursor });
-
 
 pub struct Ui{
     pub ui: conrod::Ui,
@@ -34,14 +34,14 @@ impl Ui{
             cursor_tex
         }
     }
-    pub fn draw_into_texture(&mut self, display: &Display) -> Option<Texture2d>{
+    pub fn draw_into_texture(&mut self, display: &Display, res: (u32, u32)) -> Option<Texture2d>{
         use glium::framebuffer::SimpleFrameBuffer;
         use glium::texture::{DepthTexture2d, Texture2d, DepthFormat, UncompressedFloatFormat, MipmapsOption};
         if let Some(primitives) = self.ui.draw_if_changed() {
             self.renderer.fill(&display, primitives, &self.image_map);
 
-            let depthtexture = DepthTexture2d::empty_with_format(display, DepthFormat::F32, MipmapsOption::NoMipmap, 1024, 1024).unwrap();
-            let area_tex = Texture2d::empty_with_format(display, UncompressedFloatFormat::F32F32F32F32, MipmapsOption::NoMipmap, 1024, 1024).unwrap();
+            let depthtexture = DepthTexture2d::empty_with_format(display, DepthFormat::F32, MipmapsOption::NoMipmap, res.0, res.1).unwrap();
+            let area_tex = Texture2d::empty_with_format(display, UncompressedFloatFormat::F32F32F32F32, MipmapsOption::NoMipmap, res.0, res.1).unwrap();
             {
                 let mut target = SimpleFrameBuffer::with_depth_buffer(display, &area_tex, &depthtexture).unwrap();
                 self.renderer.draw(display, &mut target, &self.image_map).unwrap();
@@ -70,7 +70,7 @@ impl Ui{
             .label_font_size(32)
             .set(self.ids.button, ui_w)
         {
-            println!("Hello world");
+            println!("Test button was pressed");
         }
 
         widget::Image::new(self.cursor_tex).w_h(32.0, 32.0)

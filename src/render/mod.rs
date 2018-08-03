@@ -73,6 +73,13 @@ impl Window{
                 None
             };
 
+        let title = if ohmd_context.is_some(){
+            format!("{}: VR", title)
+        }
+        else{
+            format!("{}: Desktop", title)
+        };
+
         let window = WindowBuilder::new()
             .with_dimensions(x_size, y_size)
             .with_title(title);
@@ -85,7 +92,7 @@ impl Window{
 
         let display = Display::new(window, context, &events_loop).unwrap();
         let _ = display.gl_window().window().set_cursor_state(glutin::CursorState::Hide);
-        
+
         let draw_areas = HashMap::with_capacity(128);
 
         Window{
@@ -115,7 +122,7 @@ impl Window{
         let scr_w = self.scr_res.0;
         let scr_h = self.scr_res.1;
 
-        if let &Some(ref _ohmd_device) = &self.ohmd_device{
+        if self.ohmd_device.is_some(){
             vr = true;
         }
         let camera = camera::Camera::new(scr_w, scr_h);
@@ -162,6 +169,10 @@ impl Window{
         });
         self.events = events;
         self.mouse_pos = mouse_pos;
+
+        if self.ohmd_device.is_some(){
+            self.update_vr();
+        }
     }
     pub fn update_vr(&mut self){
         if let &mut Some(ref mut ohmd_context) = &mut self.ohmd_context{

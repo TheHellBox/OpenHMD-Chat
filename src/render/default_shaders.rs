@@ -13,7 +13,6 @@ void main() {
     vec3 dark_color = vec3(0.7, 0.7, 0.7) * vec3(texture(tex, v_tex_coords + wrap));
     vec3 regular_color = vec3(1.0, 1.0, 1.0) * vec3(texture(tex, v_tex_coords + wrap));
     color = vec4(mix(dark_color, regular_color, brightness), 1.0);
-    color.a = 1.0;
 }
 "#;
 

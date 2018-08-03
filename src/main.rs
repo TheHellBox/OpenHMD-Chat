@@ -32,7 +32,6 @@ use clap::{Arg, App};
 
 fn main() {
     println!("Hello, world!");
-
     let matches = App::new("OpenHMD-Chat")
         .version("0.1")
         .author("The HellBox <thehellbox11@gmail.com>")
@@ -80,11 +79,12 @@ fn main() {
         }
     });
 
-    let mut window = render::Window::new(1920, 1080, "Test", vr_mode);
+    let mut window = render::Window::new(1024, 768, "OpenHMD-Chat", vr_mode);
     window.init();
 
     let mut game = game::Game::new();
 
+    //Move it to lua side
     let test_model = window.load_model("./assets/models/scene/scene.obj".to_string());
 
     let mut ui = ui::Ui::new(&window.display, window.scr_res);
@@ -107,7 +107,7 @@ fn main() {
     loop{
         {
             let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_renderer").unwrap().model.meshes[0];
-            if let Some(tex) = ui.draw_into_texture(&window.display){
+            if let Some(tex) = ui.draw_into_texture(&window.display, window.scr_res){
                 ui_renderer.texture = tex;
             }
         }
@@ -120,7 +120,6 @@ fn main() {
 
         window.draw();
         window.update();
-        window.update_vr();
         thread::sleep(time::Duration::from_millis(1));
     }
 }
