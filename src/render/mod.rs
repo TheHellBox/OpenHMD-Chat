@@ -1,6 +1,6 @@
-use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion, Translation3};
-use glium::glutin::{ContextBuilder, EventsLoop, WindowBuilder, dpi};
+use glium::glutin::{ContextBuilder, EventsLoop, WindowBuilder, Event};
 use nalgebra::core::{Matrix4, MatrixN};
+use glium::glutin::Event::WindowEvent;
 use glium::{glutin, Display, Program};
 use std::collections::HashMap;
 use openhmd_rs;
@@ -40,13 +40,41 @@ pub struct Window{
     pub draw_buffer: draw::DrawBuffer,
     pub ohmd_context: Option<openhmd_rs::Context>,
     pub ohmd_device: Option<openhmd_rs::Device>,
-    pub character_view: camera::CharacterView
+    pub character_view: camera::CharacterView,
+    pub scr_res: (u32, u32),
+    pub mouse_pos: (u32, u32),
+    pub events: Vec<Event>
 }
 
 impl Window{
     pub fn new(x_size: u32, y_size: u32, title: &'static str, vr: bool) -> Window{
+
+        let mut x_size = x_size;
+        let mut y_size = y_size;
+
+        let ohmd_context =
+            if vr {
+                Some(openhmd_rs::Context::new())
+            }
+            else{
+                None
+            };
+
+        let ohmd_device =
+            if let &Some(ref ohmd_context) = &ohmd_context{
+                ohmd_context.probe();
+                ohmd_context.update();
+                let device = ohmd_context.list_open_device(0);
+                x_size = device.get_scr_res_w();
+                y_size = device.get_scr_res_h();
+                Some(device)
+            }
+            else{
+                None
+            };
+
         let window = WindowBuilder::new()
-            .with_dimensions(dpi::LogicalSize::new(x_size as f64, y_size as f64))
+            .with_dimensions(x_size, y_size)
             .with_title(title);
 
         let context = ContextBuilder::new()
@@ -56,26 +84,9 @@ impl Window{
         let events_loop = glutin::EventsLoop::new();
 
         let display = Display::new(window, context, &events_loop).unwrap();
-
+        let _ = display.gl_window().window().set_cursor_state(glutin::CursorState::Hide);
+        
         let draw_areas = HashMap::with_capacity(128);
-
-        let ohmd_context =
-        if vr {
-            Some(openhmd_rs::Context::new())
-        }
-        else{
-            None
-        };
-
-        let ohmd_device =
-        if let &Some(ref ohmd_context) = &ohmd_context{
-            ohmd_context.probe();
-            ohmd_context.update();
-            Some(ohmd_context.list_open_device(0))
-        }
-        else{
-            None
-        };
 
         Window{
             display,
@@ -83,11 +94,14 @@ impl Window{
             draw_areas,
             shaders: HashMap::with_capacity(128),
             draw_buffer: draw::DrawBuffer{
-                objects: vec![]
+                objects: HashMap::new()
             },
             ohmd_context,
             ohmd_device,
-            character_view: camera::CharacterView::new()
+            character_view: camera::CharacterView::new(),
+            scr_res: (x_size, y_size),
+            mouse_pos: (0, 0),
+            events: vec![]
         }
     }
     pub fn init(&mut self){
@@ -98,15 +112,13 @@ impl Window{
         self.add_shader("solid", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SOLID_FRAG);
         self.add_shader("solid_2d", default_shaders::SHADER_SIMPLE_2D_VERT, default_shaders::SHADER_SOLID_FRAG);
 
-        let mut scr_w = 1024;
-        let mut scr_h = 768;
+        let scr_w = self.scr_res.0;
+        let scr_h = self.scr_res.1;
 
-        if let &Some(ref ohmd_device) = &self.ohmd_device{
-            scr_w = ohmd_device.get_scr_res_w();
-            scr_h = ohmd_device.get_scr_res_h();
+        if let &Some(ref _ohmd_device) = &self.ohmd_device{
             vr = true;
         }
-        let camera = camera::Camera::new(1024, 768);
+        let camera = camera::Camera::new(scr_w, scr_h);
         if !vr {
             self.add_draw_area("default".to_string(), camera, (scr_w, scr_h), (2.0, 2.0), (-1.0, -1.0), false);
         }
@@ -133,12 +145,29 @@ impl Window{
         self.add_draw_area("vr_cam_left".to_string(), camera, (hmd_x / 2, hmd_y), (1.0, 2.0), (-1.0, -1.0), false);
         self.add_draw_area("vr_cam_right".to_string(), camera2, (hmd_x / 2, hmd_y), (1.0, 2.0), (0.0, -1.0), false);
     }
+    pub fn update(&mut self){
+        let mut events = vec![];
+        let mut mouse_pos = self.mouse_pos;
+        self.events_loop.poll_events(|event| {
+            events.push(event.clone());
+            match event{
+                WindowEvent { ref event, .. } => match event{
+                    &glutin::WindowEvent::CursorMoved{position, ..} => {
+                        mouse_pos = (position.0 as u32, position.1 as u32);
+                    },
+                    _ => {}
+                },
+                _ => {}
+            }
+        });
+        self.events = events;
+        self.mouse_pos = mouse_pos;
+    }
     pub fn update_vr(&mut self){
         if let &mut Some(ref mut ohmd_context) = &mut self.ohmd_context{
             ohmd_context.update();
         }
         if let &mut Some(ref mut ohmd_device) = &mut self.ohmd_device{
-            println!("test");
             let chrctr_view = self.character_view.calc_view();
             {
                 let eye_left = self.draw_areas.get_mut("vr_cam_left").unwrap();

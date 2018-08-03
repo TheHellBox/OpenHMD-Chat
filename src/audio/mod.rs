@@ -1,6 +1,7 @@
 use opus;
 use alto::*;
 use std::{thread, time};
+use network::NetworkEvent;
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender};
 
@@ -57,7 +58,7 @@ impl AudioWrapper{
         };
         Some(capture)
     }
-    pub fn init(&self, sample_rate: i32, frames: i32, network_tx: Sender<Vec<u8>>) -> Sender<AudioEvent>{
+    pub fn init(&self, sample_rate: i32, frames: i32, network_tx: Sender<NetworkEvent>) -> Sender<AudioEvent>{
         let (tx_audio, rx_audio) = channel::<AudioEvent>();
 
         let output = self.create_output().unwrap();
@@ -82,7 +83,7 @@ impl AudioWrapper{
                 }
                 capture.capture_samples(&mut buffer_i16).unwrap();
                 let encoded = opus_encoder.encode_vec(&buffer_i16, sample_rate as usize).unwrap();
-                let _ = network_tx.send(encoded);
+                let _ = network_tx.send(NetworkEvent::SendMsg(encoded));
                 thread::sleep(time::Duration::from_millis(1));
             }
         });

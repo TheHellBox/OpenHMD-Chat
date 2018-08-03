@@ -3,6 +3,8 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate glium;
+#[macro_use]
+extern crate conrod;
 
 extern crate tobj;
 extern crate clap;
@@ -15,14 +17,18 @@ extern crate bincode;
 extern crate nalgebra;
 extern crate openhmd_rs;
 
+mod ui;
+mod game;
 mod audio;
 mod render;
 mod network;
 mod support;
 
-use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion, Translation3};
+use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion};
+use std::sync::{Arc, Mutex};
 use std::{thread, time};
 use clap::{Arg, App};
+
 
 fn main() {
     println!("Hello, world!");
@@ -64,13 +70,56 @@ fn main() {
         network.init(tx_audio.clone());
     });
 
-    let mut window = render::Window::new(1024, 768, "Test", vr_mode);
+    // For fixed update, I know that I can do that in main thread, but...
+    let ticks = Arc::new(Mutex::new(0));
+    let c_ticks = ticks.clone();
+    thread::spawn(move || {
+        loop{
+            *c_ticks.lock().unwrap() += 1;
+            thread::sleep(time::Duration::from_millis(16));
+        }
+    });
+
+    let mut window = render::Window::new(1920, 1080, "Test", vr_mode);
     window.init();
 
-    let test_model = window.load_model("./assets/models/scene.obj".to_string());
-    window.add_draw_object(test_model, Point3::new(0.0, 5.0, 0.0), UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.707, 0.0, 0.707)), (1.0, 1.0, 1.0));
+    let mut game = game::Game::new();
+
+    let test_model = window.load_model("./assets/models/scene/scene.obj".to_string());
+
+    let mut ui = ui::Ui::new(&window.display, window.scr_res);
+
+    window.add_draw_object("scene_01".to_string(), test_model,
+        Point3::new(0.0, 0.5, 0.0),
+        UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.707, 0.0, 0.707)),
+        (0.1, 0.1, 0.1),
+        "simple");
+
+    let ui_sphere = window.load_model("./assets/models/ui_sphere/ui_sphere.obj".to_string());
+
+    let gui_scale = (window.scr_res.0 as f32 / 20000.0, window.scr_res.1 as f32 / 20000.0);
+    window.add_draw_object("ui_renderer".to_string(), ui_sphere,
+        Point3::new(0.0, 0.0, -0.3),
+        UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.707, 0.0, 0.707)),
+        (gui_scale.0, gui_scale.1, 0.1),
+        "solid");
+
     loop{
+        {
+            let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_renderer").unwrap().model.meshes[0];
+            if let Some(tex) = ui.draw_into_texture(&window.display){
+                ui_renderer.texture = tex;
+            }
+        }
+        for _ in 0..*ticks.lock().unwrap(){
+            game.fixed_update();
+        }
+        *ticks.lock().unwrap() = 0;
+
+        ui.update(&mut window);
+
         window.draw();
+        window.update();
         window.update_vr();
         thread::sleep(time::Duration::from_millis(1));
     }

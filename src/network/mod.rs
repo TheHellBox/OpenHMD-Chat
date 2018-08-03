@@ -4,6 +4,10 @@ use audio::AudioEvent;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use bincode::{deserialize};
 
+pub enum NetworkEvent{
+    SendMsg(Vec<u8>),
+}
+
 #[derive(Serialize, Deserialize)]
 enum MessageType{
     EncodedAudio(Vec<u8>, u32),
@@ -26,8 +30,8 @@ use cobalt::{
 
 pub struct Network{
     client: Client<UdpSocket, BinaryRateLimiter, NoopPacketModifier>,
-    pub tx: Sender<Vec<u8>>,
-    rx: Receiver<Vec<u8>>
+    pub tx: Sender<NetworkEvent>,
+    rx: Receiver<NetworkEvent>
 }
 
 impl Network {
@@ -35,7 +39,7 @@ impl Network {
         use std::time::Duration;
 
         let mut config = Config::default();
-        let (tx, rx) = channel::<Vec<u8>>();
+        let (tx, rx) = channel::<NetworkEvent>();
 
         config.connection_closing_threshold = Duration::from_millis(15000);
         config.connection_drop_threshold = Duration::from_millis(5000);
@@ -56,9 +60,14 @@ impl Network {
     pub fn init(&mut self, tx_audio: Sender<AudioEvent>){
         let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
         loop{
-            if let Some(x) = self.rx.try_iter().last(){
-                if let Ok(conn) = self.client.connection() {
-                    conn.send(MessageKind::Instant, x);
+            for x in self.rx.try_iter(){
+                match x{
+                    NetworkEvent::SendMsg(x) => {
+                        if let Ok(conn) = self.client.connection() {
+                            conn.send(MessageKind::Instant, x);
+                        }
+                    },
+                    _ => {}
                 }
             }
 

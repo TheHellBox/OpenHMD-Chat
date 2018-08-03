@@ -2,19 +2,21 @@ use nalgebra::geometry::{Point3, UnitQuaternion, Translation3};
 use glium::{ Surface, VertexBuffer, IndexBuffer, Program, DrawParameters};
 use render::{Vertex2D, DrawArea, Window};
 use glium::index::PrimitiveType;
+use std::collections::HashMap;
 use nalgebra::core::{Matrix4};
 use glium::index::NoIndices;
 use render::camera::Camera;
 use render::model::Model;
 pub struct DrawObject{
-    model: Model,
-    position: Point3<f32>,
-    rotation: UnitQuaternion<f32>,
-    scale: (f32, f32, f32)
+    pub model: Model,
+    pub position: Point3<f32>,
+    pub rotation: UnitQuaternion<f32>,
+    pub scale: (f32, f32, f32),
+    pub shader: &'static str
 }
 
 pub struct DrawBuffer{
-    pub objects: Vec<DrawObject>
+    pub objects: HashMap<String, DrawObject>
 }
 
 impl Window{
@@ -35,14 +37,13 @@ impl Window{
 
             let perspective: [[f32; 4]; 4] = x.camera.perspective.into();
             let view: [[f32; 4]; 4] = x.camera.view.into();
-
-            for object in &self.draw_buffer.objects{
+            for (_name, object) in &self.draw_buffer.objects{
                 for mesh in &object.model.meshes{
                     let transform: [[f32; 4]; 4] = object.calc_transform().into();
                     picking_target.draw(
                         &mesh.mesh,
                         &NoIndices(PrimitiveType::TrianglesList),
-                        self.shaders.get("simple").unwrap(),
+                        self.shaders.get(object.shader).unwrap(),
                         &uniform! { matrix: transform, perspective: perspective, view: view, tex: &mesh.texture},
                         &get_params()
                     ).unwrap();
@@ -83,15 +84,17 @@ impl Window{
         };
         self.draw_areas.insert(name, draw_area);
     }
-    pub fn add_draw_object(&mut self, model: Model, position: Point3<f32>, rotation: UnitQuaternion<f32>, scale: (f32, f32, f32)){
-        self.draw_buffer.objects.push(
+    pub fn add_draw_object(&mut self, name: String, model: Model, position: Point3<f32>, rotation: UnitQuaternion<f32>, scale: (f32, f32, f32), shader: &'static str){
+        self.draw_buffer.objects.insert(
+            name,
             DrawObject{
                 model,
                 position,
                 rotation,
-                scale
+                scale,
+                shader
             }
-        )
+        );
     }
     fn box_vert_buf(&self) -> VertexBuffer<Vertex2D>{
         let vert_buf = VertexBuffer::new(&self.display,
