@@ -1,7 +1,9 @@
-use nalgebra::geometry::{Point3, UnitQuaternion, Translation3, Quaternion};
-use std::borrow::Borrow;
+use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion};
+use scripting_engine;
 use render::Window;
+use hlua;
 
+#[derive(Clone)]
 pub struct GameObject{
     pub name: String,
     pub render_object: Option<String>,
@@ -9,6 +11,7 @@ pub struct GameObject{
     pub position: Point3<f32>,
     pub rotation: UnitQuaternion<f32>
 }
+implement_lua_read!(GameObject);
 impl GameObject{
     pub fn new(name: String) -> GameObject{
         GameObject{
@@ -44,7 +47,7 @@ impl GameObject{
     }
 }
 
-
+#[derive(Clone)]
 pub struct GameObjectBuilder{
     pub name: String,
     pub render_object: Option<String>,
@@ -52,6 +55,7 @@ pub struct GameObjectBuilder{
     pub position: Point3<f32>,
     pub rotation: UnitQuaternion<f32>
 }
+implement_lua_read!(GameObjectBuilder);
 
 impl GameObjectBuilder{
     pub fn new() -> GameObjectBuilder{
@@ -91,3 +95,17 @@ impl GameObjectBuilder{
         }
     }
 }
+
+implement_lua_push!(GameObjectBuilder, |mut metatable| {
+    let mut index = metatable.empty_array("__index");
+    index.set("with_position", hlua::function4(|go_builder: &mut GameObjectBuilder, x: f32, y: f32, z: f32| go_builder.position = Point3::new(x, y, z) ));
+    index.set("build", hlua::function1(|go_builder: &mut GameObjectBuilder| {
+        let game_object = go_builder.clone().build();
+        let name = game_object.name.clone();
+        let channels = scripting_engine::LUA_CHANNL_IN.lock().unwrap();
+        let _ = channels.0.send(scripting_engine::LuaEvent::SpawnGameObject(game_object));
+        scripting_engine::LuaEntity{
+            name
+        }
+    } ));
+});

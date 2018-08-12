@@ -16,4 +16,6 @@ glium="0.21.0"
 tobj="*"
 image="*"
 nalgebra="0.15"
+hlua="0.4"
 conrod={ version = "0.60.0", features = ["glium", "winit"] }
+lazy_static = "1.1.0"

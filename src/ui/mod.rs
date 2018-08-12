@@ -2,7 +2,7 @@ use conrod;
 use glium;
 use render;
 use support;
-use glium::{Display, Surface};
+use glium::{Display};
 use glium::texture::Texture2d;
 use conrod::{widget, Positionable, Widget, Colorable, Sizeable, Labelable};
 // I still don't really understand how conrod works, so this code can be pretty terrible

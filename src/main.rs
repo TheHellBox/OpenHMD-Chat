@@ -1,10 +1,13 @@
-
+#[macro_use]
+extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate glium;
 #[macro_use]
 extern crate conrod;
+#[macro_use]
+extern crate hlua;
 
 extern crate tobj;
 extern crate clap;
@@ -23,6 +26,7 @@ mod audio;
 mod render;
 mod network;
 mod support;
+mod scripting_engine;
 
 use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion};
 use std::sync::{Arc, Mutex};
@@ -83,7 +87,9 @@ fn main() {
     window.init();
 
     let mut game = game::Game::new();
-
+    println!("Running lua...");
+    let mut scripting_eng = scripting_engine::ScriptingEngine::new();
+    println!("Done!");
     //Move it to lua side
     let test_model = window.load_model("./assets/models/scene/scene.obj".to_string());
 
@@ -111,13 +117,17 @@ fn main() {
                 ui_renderer.texture = tex;
             }
         }
+        game.update();
         for _ in 0..*ticks.lock().unwrap(){
             game.fixed_update();
         }
         *ticks.lock().unwrap() = 0;
 
+        for (_, x) in &game.gameobjects{
+            println!("{:?}", x.position);
+        }
+        scripting_eng.update(&mut game);
         ui.update(&mut window);
-
         window.draw();
         window.update();
         thread::sleep(time::Duration::from_millis(1));
