@@ -30,7 +30,7 @@ mod scripting_engine;
 
 use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion};
 use std::sync::{Arc, Mutex};
-use std::{thread, time};
+use std::{thread, time, process};
 use clap::{Arg, App};
 
 
@@ -51,6 +51,7 @@ fn main() {
             .help("VR mode"))
         .get_matches();
 
+    println!("Main thread ID {}", process::id());
     let mut vr_mode = false;
 
     let addr = matches.value_of("addr").unwrap_or("127.0.0.1:4460").to_string();
@@ -96,20 +97,27 @@ fn main() {
     let mut ui = ui::Ui::new(&window.display, window.scr_res);
 
     window.add_draw_object("scene_01".to_string(), test_model,
-        Point3::new(0.0, 0.5, 0.0),
-        UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.707, 0.0, 0.707)),
+        Point3::new(0.0, 0.0, 0.0),
+        UnitQuaternion::from_quaternion(Quaternion::new(0.707, 0.0, 0.707, 0.0)),
         (0.1, 0.1, 0.1),
         "simple");
 
-    let ui_sphere = window.load_model("./assets/models/ui_sphere/ui_sphere.obj".to_string());
-
+    let ui_sphere = window.load_model("./assets/models/cube/cube.obj".to_string());
     let gui_scale = (window.scr_res.0 as f32 / 20000.0, window.scr_res.1 as f32 / 20000.0);
     window.add_draw_object("ui_renderer".to_string(), ui_sphere,
-        Point3::new(0.0, 0.0, -0.3),
-        UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.707, 0.0, 0.707)),
+        Point3::new(0.0, 0.0, 0.0),
+        UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
         (gui_scale.0, gui_scale.1, 0.1),
         "solid");
 
+    let gui_gm = game::gameobject::GameObjectBuilder::new()
+        .with_name("gui_gm".to_string())
+        .with_position(Point3::new(0.0, 0.0, -2.0))
+        .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, -90.0, 0.0))
+        .with_render_object("ui_renderer".to_string())
+        .build();
+
+    game.spawn_game_object(gui_gm);
     loop{
         {
             let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_renderer").unwrap().model.meshes[0];
@@ -124,11 +132,11 @@ fn main() {
         *ticks.lock().unwrap() = 0;
 
         for (_, x) in &game.gameobjects{
-            println!("{:?}", x.position);
+            //println!("{:?}", x.position);
         }
         scripting_eng.update(&mut game);
         ui.update(&mut window);
-        window.draw();
+        window.draw(&game);
         window.update();
         thread::sleep(time::Duration::from_millis(1));
     }

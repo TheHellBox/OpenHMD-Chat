@@ -7,6 +7,8 @@ use nalgebra::core::{Matrix4};
 use glium::index::NoIndices;
 use render::camera::Camera;
 use render::model::Model;
+use game::Game;
+
 pub struct DrawObject{
     pub model: Model,
     pub position: Point3<f32>,
@@ -20,7 +22,7 @@ pub struct DrawBuffer{
 }
 
 impl Window{
-    pub fn draw(&mut self){
+    pub fn draw(&mut self, game: &Game){
         use glium::framebuffer::SimpleFrameBuffer;
         use glium::texture::{DepthTexture2d, Texture2d, DepthFormat, UncompressedFloatFormat, MipmapsOption};
         let mut target = self.display.draw();
@@ -37,16 +39,23 @@ impl Window{
 
             let perspective: [[f32; 4]; 4] = x.camera.perspective.into();
             let view: [[f32; 4]; 4] = x.camera.view.into();
-            for (_name, object) in &self.draw_buffer.objects{
-                for mesh in &object.model.meshes{
-                    let transform: [[f32; 4]; 4] = object.calc_transform().into();
-                    picking_target.draw(
-                        &mesh.mesh,
-                        &NoIndices(PrimitiveType::TrianglesList),
-                        self.shaders.get(object.shader).unwrap(),
-                        &uniform! { matrix: transform, perspective: perspective, view: view, tex: &mesh.texture},
-                        &get_params()
-                    ).unwrap();
+
+            for (name, game_object) in &game.gameobjects{
+                if game_object.render_object != "none".to_string(){
+                    if let Some(render_object) = self.draw_buffer.objects.get_mut(&game_object.render_object){
+                        for mesh in &render_object.model.meshes{
+                            let renderobj_transform = render_object.calc_transform();
+                            let gameobj_transform = game_object.calc_transform();
+                            let transform: [[f32; 4]; 4] = gameobj_transform.into();
+                            picking_target.draw(
+                                &mesh.mesh,
+                                &NoIndices(PrimitiveType::TrianglesList),
+                                self.shaders.get(render_object.shader).unwrap(),
+                                &uniform! { matrix: transform, perspective: perspective, view: view, tex: &mesh.texture},
+                                &get_params()
+                            ).unwrap();
+                        }
+                    }
                 }
             }
             let mat =
