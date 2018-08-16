@@ -9,6 +9,7 @@ extern crate conrod;
 #[macro_use]
 extern crate hlua;
 
+extern crate rand;
 extern crate tobj;
 extern crate clap;
 extern crate opus;
@@ -118,6 +119,7 @@ fn main() {
         .build();
 
     game.spawn_game_object(gui_gm);
+
     loop{
         {
             let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_renderer").unwrap().model.meshes[0];

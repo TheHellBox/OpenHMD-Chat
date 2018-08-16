@@ -2,6 +2,7 @@ use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion, Translation3};
 use nalgebra::core::{Matrix4};
 use scripting_engine;
 use render::Window;
+use support;
 use hlua;
 
 #[derive(Clone)]
@@ -82,46 +83,52 @@ impl GameObjectBuilder{
             rotation: UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.0, 0.0, 1.0)),
         }
     }
-    pub fn with_name(mut self, name: String) -> Self{
+    pub fn with_name(self, name: String) -> Self{
         GameObjectBuilder{
             name,
             ..self
         }
     }
-    pub fn with_position(mut self, position: Point3<f32>) -> Self{
+    pub fn with_position(self, position: Point3<f32>) -> Self{
         GameObjectBuilder{
             position,
             ..self
         }
     }
-    pub fn with_rotation(mut self, rotation: Quaternion<f32>) -> Self{
+    pub fn with_rotation(self, rotation: Quaternion<f32>) -> Self{
         let rotation = UnitQuaternion::from_quaternion(rotation);
         GameObjectBuilder{
             rotation,
             ..self
         }
     }
-    pub fn with_rotation_unit(mut self, rotation: UnitQuaternion<f32>) -> Self{
+    pub fn with_rotation_unit(self, rotation: UnitQuaternion<f32>) -> Self{
         GameObjectBuilder{
             rotation,
             ..self
         }
     }
-    pub fn with_render_object(mut self, render_object: String) -> Self{
+    pub fn with_render_object(self, render_object: String) -> Self{
         GameObjectBuilder{
             render_object,
             ..self
         }
     }
-    pub fn with_physic_body(mut self, physic_body: u32) -> Self{
+    pub fn with_physic_body(self, physic_body: u32) -> Self{
         GameObjectBuilder{
             physic_body,
             ..self
         }
     }
     pub fn build(self) -> GameObject{
+        let name = if self.name != "none".to_string(){
+            self.name
+        }
+        else{
+            support::rand_string(10)
+        };
         GameObject{
-            name: self.name,
+            name: name,
             render_object: self.render_object,
             physic_body: self.physic_body,
             position: self.position,
@@ -135,6 +142,10 @@ implement_lua_push!(GameObjectBuilder, |mut metatable| {
     let mut index = metatable.empty_array("__index");
     index.set("with_position", hlua::function4(|go_builder: &mut GameObjectBuilder, x: f32, y: f32, z: f32| go_builder.position = Point3::new(x, y, z) ));
     index.set("with_model", hlua::function2(|go_builder: &mut GameObjectBuilder, name: String| go_builder.render_object = name ));
+    index.set("with_name", hlua::function2(|go_builder: &mut GameObjectBuilder, name: String| go_builder.name = name ));
+    index.set("with_rotation", hlua::function5(|go_builder: &mut GameObjectBuilder, x: f32, y: f32, z: f32, w: f32|
+        go_builder.rotation = UnitQuaternion::from_quaternion(Quaternion::new(x, y, z, w))
+    ));
     index.set("build", hlua::function1(|go_builder: &mut GameObjectBuilder| {
         let game_object = go_builder.clone().build();
         let name = game_object.name.clone();

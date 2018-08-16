@@ -23,16 +23,19 @@ lazy_static! {
 pub enum LuaEvent{
     SetGameObjectPosition(String, (f32, f32, f32)),
     SpawnGameObject(GameObject),
-    GetGameObjectPosition(String)
+    GetGameObjectPosition(String),
+    GetObjects()
 }
 
 pub enum LuaCommand{
     GetGameObjectPosition(Vec<f32>),
+    GetObjects(Vec<LuaEntity>),
 }
 
 pub struct LuaEntity{
     pub name: String
 }
+
 implement_lua_read!(LuaEntity);
 implement_lua_push!(LuaEntity, |mut metatable| {
     let mut index = metatable.empty_array("__index");
@@ -42,9 +45,11 @@ implement_lua_push!(LuaEntity, |mut metatable| {
             let _ = channels.send(LuaEvent::SetGameObjectPosition(ent.name.clone(), (x, y, z)));
         }
     ));
+    index.set("name", hlua::function1(|ent: &mut LuaEntity|
+        ent.name.clone()
+    ));
     index.set("get_position", hlua::function1(|ent: &mut LuaEntity|
         {
-            use std::time::Duration;
             let channels = LUA_CHANNL_OUT.0.lock().unwrap();
             let _ = channels.send(LuaEvent::GetGameObjectPosition(ent.name.clone()));
             let channels = LUA_CHANNL_IN.1.lock().unwrap();
@@ -84,6 +89,22 @@ impl ScriptingEngine{
                 let mut world = lua.empty_array("World");
                 world.set("create_game_object", hlua::function0(|| GameObjectBuilder::new() ));
                 world.set("get_game_object", hlua::function1(|name: String| LuaEntity{name} ));
+                world.set("get_all_objects", hlua::function0(|| {
+                    let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                    let _ = channels.send(LuaEvent::GetObjects());
+                    let channels = LUA_CHANNL_IN.1.lock().unwrap();
+                    let data = channels.recv();
+                    if data.is_ok(){
+                        let data = data.unwrap();
+                        match data{
+                            LuaCommand::GetObjects(objects) => objects,
+                            _ => vec![]
+                        }
+                    }
+                    else{
+                        vec![]
+                    }
+                } ));
             }
             match lua.execute_from_reader::<(), _>(File::open(&Path::new("./assets/lua/test.lua")).unwrap()){
                 Ok(x) => {},
@@ -117,6 +138,14 @@ impl ScriptingEngine{
                         let channels = LUA_CHANNL_IN.0.lock().unwrap();
                         let _ = channels.send(LuaCommand::GetGameObjectPosition(vec![0.0, 0.0, 0.0]));
                     }
+                },
+                LuaEvent::GetObjects() => {
+                    let mut objects = vec![];
+                    for (name, x) in &game.gameobjects{
+                        objects.push(LuaEntity{name: name.clone()});
+                    }
+                    let channels = LUA_CHANNL_IN.0.lock().unwrap();
+                    let _ = channels.send(LuaCommand::GetObjects(objects));
                 },
                 _ => {}
             }

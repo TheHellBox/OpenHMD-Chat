@@ -1,5 +1,16 @@
-object_builder = World.create_game_object()
-object_builder:with_position(1, 0 ,0)
-ent = object_builder:build()
-pos = ent:get_position()[1]
-print(pos)
+function test_names()
+	ent = World.create_game_object()
+	ent = ent:build()
+	print(ent:name())
+end
+
+for i=1, 10 do
+	test_names()
+end
+
+print("Starting test 2")
+
+objects = World.get_all_objects()
+for k, v in ipairs(objects) do
+	print(v:name())
+end
