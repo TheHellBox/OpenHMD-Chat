@@ -1,7 +1,6 @@
 use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion, Translation3};
 use nalgebra::core::{Matrix4};
 use scripting_engine;
-use render::Window;
 use support;
 use hlua;
 
@@ -40,26 +39,6 @@ impl GameObject{
     }
     pub fn set_rotation_unit(&mut self, rot: UnitQuaternion<f32>){
         self.rotation = rot;
-    }
-    pub fn calc_transform(&self) -> Matrix4<f32>{
-        let scale_matrix: Matrix4<f32> = Matrix4::new(
-            self.scale.0 as f32, 0.0, 0.0, 0.0,
-            0.0, self.scale.1 as f32, 0.0, 0.0,
-            0.0, 0.0, self.scale.2 as f32, 0.0,
-            0.0, 0.0, 0.0, 1.0,
-        );
-        let translation_matrix = Translation3::from_vector(self.position.coords).to_homogeneous();
-        let rotation_matrix = self.rotation.to_homogeneous();
-        rotation_matrix * translation_matrix * scale_matrix
-    }
-    pub fn update(&mut self, window: &mut Window){
-        let name = self.render_object.clone();
-        if name != "none".to_string(){
-            if let Some(ref mut object) = window.draw_buffer.objects.get_mut(&name){
-                object.position = self.position;
-                object.rotation = self.rotation;
-            }
-        }
     }
 }
 

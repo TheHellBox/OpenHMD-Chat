@@ -2,10 +2,12 @@ use opus;
 use std::{thread, time};
 use audio::AudioEvent;
 use std::sync::mpsc::{channel, Sender, Receiver};
-use bincode::{deserialize};
+use bincode::{deserialize, serialize};
 
+#[derive(Serialize, Deserialize)]
 pub enum NetworkEvent{
     SendMsg(Vec<u8>),
+    SendAudio(Vec<u8>),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -61,13 +63,8 @@ impl Network {
         let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
         loop{
             for x in self.rx.try_iter(){
-                match x{
-                    NetworkEvent::SendMsg(x) => {
-                        if let Ok(conn) = self.client.connection() {
-                            conn.send(MessageKind::Instant, x);
-                        }
-                    },
-                    _ => {}
+                if let Ok(conn) = self.client.connection() {
+                    conn.send(MessageKind::Instant, serialize(&x).unwrap());
                 }
             }
 

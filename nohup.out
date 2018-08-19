@@ -1,0 +1,2 @@
+E: [pulseaudio] pid.c: Daemon already running.
+E: [pulseaudio] main.c: Произошла ошибка при выполнении pa_pid_file_create().

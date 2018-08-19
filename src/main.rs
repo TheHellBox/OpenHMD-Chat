@@ -113,7 +113,7 @@ fn main() {
 
     let gui_gm = game::gameobject::GameObjectBuilder::new()
         .with_name("gui_gm".to_string())
-        .with_position(Point3::new(0.0, 0.0, -2.0))
+        .with_position(Point3::new(0.0, 0.0, 0.0))
         .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, -90.0, 0.0))
         .with_render_object("ui_renderer".to_string())
         .build();
@@ -133,9 +133,6 @@ fn main() {
         }
         *ticks.lock().unwrap() = 0;
 
-        for (_, x) in &game.gameobjects{
-            //println!("{:?}", x.position);
-        }
         scripting_eng.update(&mut game);
         ui.update(&mut window);
         window.draw(&game);

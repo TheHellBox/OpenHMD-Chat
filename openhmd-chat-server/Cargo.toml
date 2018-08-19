@@ -1,22 +1,14 @@
 [package]
-name = "openhmd-chat"
+name = "openhmd-chat-server"
 version = "0.1.0"
 authors = ["TheHellBox <hellboxstudio@yandex.ru>"]
 
 [dependencies]
-openhmd-rs="*"
-alto="3.0.1"
 cobalt="*"
-opus="*"
 serde="1.0"
 serde_derive = "1.0"
 bincode="1.0"
-clap="*"
-glium="0.21.0"
-tobj="*"
-image="*"
 nalgebra="0.15"
 hlua="0.4"
-conrod={ version = "0.60.0", features = ["glium", "winit"] }
-lazy_static = "1.1.0"
 rand="*"
+lazy_static = "1.1.0"
