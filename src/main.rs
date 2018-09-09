@@ -29,7 +29,7 @@ mod network;
 mod support;
 mod scripting_engine;
 
-use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion};
+use nalgebra::geometry::{Point3, UnitQuaternion};
 use std::sync::{Arc, Mutex};
 use std::{thread, time, process};
 use clap::{Arg, App};
@@ -64,17 +64,16 @@ fn main() {
     let frames = 1280;
     let sample_rate = 16000;
 
-    let mut network = network::Network::new();
-    let net_tx = network.tx.clone();
+    let (mut network, mut net_rx) = network::Network::new();
+    let mut net_tx = network.tx_in.clone();
 
     let audio = audio::AudioWrapper::new().unwrap();
-    let tx_audio = audio.init(sample_rate, frames, net_tx);
+    let tx_audio = audio.init(sample_rate, frames, net_tx.clone());
 
     thread::spawn(move || {
         network.connect(addr);
         network.init(tx_audio.clone());
     });
-
     // For fixed update, I know that I can do that in main thread, but...
     let ticks = Arc::new(Mutex::new(0));
     let c_ticks = ticks.clone();
@@ -93,41 +92,42 @@ fn main() {
     let mut scripting_eng = scripting_engine::ScriptingEngine::new();
     println!("Done!");
     //Move it to lua side
-    let test_model = window.load_model("./assets/models/scene/scene.obj".to_string());
-
     let mut ui = ui::Ui::new(&window.display, window.scr_res);
-
-    window.add_draw_object("scene_01".to_string(), test_model,
-        Point3::new(0.0, 0.0, 0.0),
-        UnitQuaternion::from_quaternion(Quaternion::new(0.707, 0.0, 0.707, 0.0)),
-        (0.1, 0.1, 0.1),
-        "simple");
-
-    let ui_sphere = window.load_model("./assets/models/cube/cube.obj".to_string());
     let gui_scale = (window.scr_res.0 as f32 / 20000.0, window.scr_res.1 as f32 / 20000.0);
-    window.add_draw_object("ui_renderer".to_string(), ui_sphere,
-        Point3::new(0.0, 0.0, 0.0),
-        UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
-        (gui_scale.0, gui_scale.1, 0.1),
-        "solid");
 
-    let gui_gm = game::gameobject::GameObjectBuilder::new()
-        .with_name("gui_gm".to_string())
-        .with_position(Point3::new(0.0, 0.0, 0.0))
+    //Load models
+    let _ = window.load_model_and_push("./assets/models/cube/cube.obj".to_string(), "cube".to_string(), (0.1, 0.1, 0.1));
+    let _ = window.load_model_and_push("./assets/models/ui_plane/ui_plane.obj".to_string(), "ui_plane".to_string(), (0.1, 0.1, 0.1));
+    let _ = window.load_model_and_push("./assets/models/scene/scene.obj".to_string(), "scene_01".to_string(), (0.1, 0.1, 0.1));
+
+    // Create game objects
+    let gui_go = game::gameobject::GameObjectBuilder::new()
+        .with_name("gui_go".to_string())
+        .with_position(Point3::new(0.0, 0.7, 0.0))
+        .with_scale((gui_scale.0 / 5.0, gui_scale.1 / 5.0, 0.1 / 5.0))
         .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, -90.0, 0.0))
-        .with_render_object("ui_renderer".to_string())
+        .with_render_object("ui_plane".to_string())
         .build();
 
-    game.spawn_game_object(gui_gm);
+    let scene_go = game::gameobject::GameObjectBuilder::new()
+        .with_name("scene_go".to_string())
+        .with_position(Point3::new(0.0, 0.0, 0.0))
+        .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, -90.0, 0.0))
+        .with_render_object("scene_01".to_string())
+        .build();
+
+    // Spawn them
+    game.spawn_game_object(gui_go);
+    game.spawn_game_object(scene_go);
 
     loop{
         {
-            let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_renderer").unwrap().model.meshes[0];
+            let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_plane").unwrap().model.meshes[0];
             if let Some(tex) = ui.draw_into_texture(&window.display, window.scr_res){
                 ui_renderer.texture = tex;
             }
         }
-        game.update();
+        game.update(&mut net_rx, &mut net_tx, &mut window);
         for _ in 0..*ticks.lock().unwrap(){
             game.fixed_update();
         }
@@ -136,7 +136,7 @@ fn main() {
         scripting_eng.update(&mut game);
         ui.update(&mut window);
         window.draw(&game);
-        window.update();
+        window.update(&mut net_tx);
         thread::sleep(time::Duration::from_millis(1));
     }
 }

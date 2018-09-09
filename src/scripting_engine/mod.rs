@@ -74,13 +74,11 @@ implement_lua_push!(LuaEntity, |mut metatable| {
 
 
 pub struct ScriptingEngine{
-    pub rx: Receiver<LuaEvent>
+
 }
 
 impl ScriptingEngine{
     pub fn new() -> ScriptingEngine{
-        use nalgebra::geometry::{Point3};
-        let (tx, rx) = channel::<LuaEvent>();
         thread::spawn(move || {
             let mut lua = Lua::new();
             //init
@@ -107,12 +105,12 @@ impl ScriptingEngine{
                 } ));
             }
             match lua.execute_from_reader::<(), _>(File::open(&Path::new("./assets/lua/test.lua")).unwrap()){
-                Ok(x) => {},
+                Ok(_) => {},
                 Err(err) => { println!("LUA ERROR: {}", err.description()); }
             };
         });
         ScriptingEngine{
-            rx
+
         }
     }
     pub fn update(&mut self, game: &mut Game){

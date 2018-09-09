@@ -1,8 +1,11 @@
 use glium::glutin::{ContextBuilder, EventsLoop, WindowBuilder, Event};
+use std::sync::mpsc::{Sender, Receiver};
 use nalgebra::core::{Matrix4, MatrixN};
 use glium::glutin::Event::WindowEvent;
 use glium::{glutin, Display, Program};
 use std::collections::HashMap;
+use network::NetworkEvent;
+use nalgebra::{UnitQuaternion, Quaternion};
 use openhmd_rs;
 
 pub mod default_shaders;
@@ -111,9 +114,10 @@ impl Window{
             events: vec![]
         }
     }
+    pub fn is_vr(&self) -> bool{
+        self.ohmd_device.is_some()
+    }
     pub fn init(&mut self){
-        let mut vr = false;
-
         println!("Loading shaders...");
         self.add_shader("simple", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SIMPLE_FRAG);
         self.add_shader("solid", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SOLID_FRAG);
@@ -122,11 +126,8 @@ impl Window{
         let scr_w = self.scr_res.0;
         let scr_h = self.scr_res.1;
 
-        if self.ohmd_device.is_some(){
-            vr = true;
-        }
         let camera = camera::Camera::new(scr_w, scr_h);
-        if !vr {
+        if !self.is_vr() {
             self.add_draw_area("default".to_string(), camera, (scr_w, scr_h), (2.0, 2.0), (-1.0, -1.0), false);
         }
         else{
@@ -152,7 +153,7 @@ impl Window{
         self.add_draw_area("vr_cam_left".to_string(), camera, (hmd_x / 2, hmd_y), (1.0, 2.0), (-1.0, -1.0), false);
         self.add_draw_area("vr_cam_right".to_string(), camera2, (hmd_x / 2, hmd_y), (1.0, 2.0), (0.0, -1.0), false);
     }
-    pub fn update(&mut self){
+    pub fn update(&mut self, net_tx: &mut Sender<NetworkEvent>){
         let mut events = vec![];
         let mut mouse_pos = self.mouse_pos;
         self.events_loop.poll_events(|event| {
@@ -169,10 +170,25 @@ impl Window{
         });
         self.events = events;
         self.mouse_pos = mouse_pos;
-
-        if self.ohmd_device.is_some(){
+        let mut head_rotation = UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0);
+        if self.is_vr(){
             self.update_vr();
+            if let &mut Some(ref mut ohmd_device) = &mut self.ohmd_device{
+                let rotation = ohmd_device.get_rotation_quat();
+                let rotation = UnitQuaternion::from_quaternion(Quaternion::new(-rotation[3], rotation[0], rotation[1], rotation[2]));
+                head_rotation *= rotation;
+            }
         }
+        else{
+            match self.draw_areas.get_mut("default"){
+                Some(x) => {
+                    x.camera.view = self.character_view.calc_view();
+                },
+                None => {}
+            };
+        }
+        head_rotation *= self.character_view.rotation;
+        let _ = net_tx.send(NetworkEvent::SendRotation(head_rotation));
     }
     pub fn update_vr(&mut self){
         if let &mut Some(ref mut ohmd_context) = &mut self.ohmd_context{
@@ -183,15 +199,15 @@ impl Window{
             {
                 let eye_left = self.draw_areas.get_mut("vr_cam_left").unwrap();
                 let proj_l: Matrix4<f32> = mat16_to_nalg(ohmd_device.get_proj_matrix_l());
-                let view: Matrix4<f32> = mat16_to_nalg(ohmd_device.get_view_matrix_l());
-                eye_left.camera.view = view * chrctr_view;
+                let view: Matrix4<f32> = mat16_to_nalg(ohmd_device.get_view_matrix_l()) * chrctr_view;
+                eye_left.camera.view = view;
                 eye_left.camera.perspective = proj_l;
             }
             {
                 let eye_right = self.draw_areas.get_mut("vr_cam_right").unwrap();
-                let view: Matrix4<f32> = mat16_to_nalg(ohmd_device.get_view_matrix_r());
                 let proj_r: Matrix4<f32> = mat16_to_nalg(ohmd_device.get_proj_matrix_r());
-                eye_right.camera.view = view * chrctr_view;
+                let view: Matrix4<f32> = mat16_to_nalg(ohmd_device.get_view_matrix_r()) * chrctr_view;
+                eye_right.camera.view = view;
                 eye_right.camera.perspective = proj_r;
             }
         }

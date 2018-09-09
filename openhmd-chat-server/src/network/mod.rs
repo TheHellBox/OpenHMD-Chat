@@ -1,6 +1,6 @@
 use std::{thread, time};
 use bincode::{serialize, deserialize};
-
+use nalgebra::{Translation3, Point3, UnitQuaternion};
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
     Server, ServerEvent, ConnectionID
@@ -10,12 +10,16 @@ use cobalt::{
 pub enum NetworkEvent{
     SendMsg(Vec<u8>),
     SendAudio(Vec<u8>),
+    SendPosition(Point3<f32>),
+    SendRotation(UnitQuaternion<f32>),
 }
 
 #[derive(Serialize, Deserialize)]
 enum MessageType{
     EncodedAudio(Vec<u8>, u32),
     PlayerConnected(u32),
+    GameObjectChangedPosition(String, Point3<f32>),
+    GameObjectChangedRotation(String, UnitQuaternion<f32>),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
 }
@@ -73,6 +77,22 @@ impl Network {
                                     }
                                 }
                             },
+                            NetworkEvent::SendPosition(position) => {
+                                for (_, conn) in self.server.connections() {
+                                    if conn.id() != id{
+                                        let msg = MessageType::GameObjectChangedPosition(format!{"player{}", id_u32}, position);
+                                        conn.send(MessageKind::Instant, serialize(&msg).unwrap());
+                                    }
+                                }
+                            },
+                            NetworkEvent::SendRotation(rotation) => {
+                                for (_, conn) in self.server.connections() {
+                                    if conn.id() != id{
+                                        let msg = MessageType::GameObjectChangedRotation(format!{"player{}", id_u32}, rotation);
+                                        conn.send(MessageKind::Instant, serialize(&msg).unwrap());
+                                    }
+                                }
+                            },
                             _ => {}
                         }
                     },
@@ -85,13 +105,13 @@ impl Network {
                             if conn.id() != id{
                                 let ConnectionID(player_id) = id;
                                 let player_connected = MessageType::PlayerConnected(id_u32);
-                                conn.send(MessageKind::Instant, serialize(&player_connected).unwrap());
+                                conn.send(MessageKind::Reliable, serialize(&player_connected).unwrap());
                                 self.server_info.players.push(player_id);
                             }
                             else{
                                 let server_info_raw = serialize(&self.server_info).unwrap();
                                 let server_info = serialize(&MessageType::ServerInfo(server_info_raw)).unwrap();
-                                conn.send(MessageKind::Instant, server_info);
+                                conn.send(MessageKind::Reliable, server_info);
                             }
                         }
                     },

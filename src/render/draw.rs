@@ -40,11 +40,11 @@ impl Window{
             let perspective: [[f32; 4]; 4] = x.camera.perspective.into();
             let view: [[f32; 4]; 4] = x.camera.view.into();
 
-            for (name, game_object) in &game.gameobjects{
+            for (_, game_object) in &game.gameobjects{
                 if game_object.render_object != "none".to_string(){
                     if let Some(render_object) = self.draw_buffer.objects.get_mut(&game_object.render_object){
                         for mesh in &render_object.model.meshes{
-                            let renderobj_transform = render_object.calc_transform();
+                            //let renderobj_transform = render_object.calc_transform();
                             let gameobj_transform = game_object.calc_transform();
                             let transform: [[f32; 4]; 4] = gameobj_transform.into();
                             picking_target.draw(

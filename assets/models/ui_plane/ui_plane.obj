@@ -1,6 +1,6 @@
 # Blender v2.78 (sub 0) OBJ File: ''
 # www.blender.org
-mtllib ui_sphere.mtl
+mtllib ui_plane.mtl
 o Plane_Plane.001
 v -3.987689 -5.404958 4.913890
 v -3.987690 -5.404955 -4.913893

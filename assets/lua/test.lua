@@ -1,14 +1,12 @@
-function test_names()
+function create_game_object()
 	ent = World.create_game_object()
 	ent = ent:build()
-	print(ent:name())
+	return ent
 end
 
 for i=1, 10 do
-	test_names()
+	create_game_object()
 end
-
-print("Starting test 2")
 
 objects = World.get_all_objects()
 for k, v in ipairs(objects) do

@@ -8,7 +8,7 @@ cobalt="*"
 serde="1.0"
 serde_derive = "1.0"
 bincode="1.0"
-nalgebra="0.15"
+nalgebra={ version = "0.15", features = ["serde-serialize"] }
 hlua="0.4"
 rand="*"
 lazy_static = "1.1.0"

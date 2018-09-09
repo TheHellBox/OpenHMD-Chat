@@ -1,5 +1,4 @@
-use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion, Translation3};
-use nalgebra::core::{Matrix4};
+use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion};
 use scripting_engine;
 use support;
 use hlua;

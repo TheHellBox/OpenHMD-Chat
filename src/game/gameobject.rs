@@ -50,8 +50,8 @@ impl GameObject{
         );
         let translation_matrix = Translation3::from_vector(self.position.coords).to_homogeneous();
         let rotation_matrix = self.rotation.to_homogeneous();
-        rotation_matrix * translation_matrix * scale_matrix
-    }
+        translation_matrix * rotation_matrix * scale_matrix
+}
     pub fn update(&mut self, window: &mut Window){
         let name = self.render_object.clone();
         if name != "none".to_string(){
@@ -69,7 +69,8 @@ pub struct GameObjectBuilder{
     pub render_object: String,
     pub physic_body: u32,
     pub position: Point3<f32>,
-    pub rotation: UnitQuaternion<f32>
+    pub rotation: UnitQuaternion<f32>,
+    pub scale: (f32, f32, f32)
 }
 implement_lua_read!(GameObjectBuilder);
 
@@ -81,11 +82,18 @@ impl GameObjectBuilder{
             physic_body: 0,
             position: Point3::new(0.0, 0.0, 0.0),
             rotation: UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.0, 0.0, 1.0)),
+            scale: (0.1, 0.1, 0.1)
         }
     }
     pub fn with_name(self, name: String) -> Self{
         GameObjectBuilder{
             name,
+            ..self
+        }
+    }
+    pub fn with_scale(self, scale: (f32, f32, f32)) -> Self{
+        GameObjectBuilder{
+            scale,
             ..self
         }
     }
@@ -133,7 +141,7 @@ impl GameObjectBuilder{
             physic_body: self.physic_body,
             position: self.position,
             rotation: self.rotation,
-            scale: (0.1, 0.1, 0.1)
+            scale: self.scale,
         }
     }
 }

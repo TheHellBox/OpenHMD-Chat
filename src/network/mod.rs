@@ -1,6 +1,7 @@
 use opus;
 use std::{thread, time};
 use audio::AudioEvent;
+use nalgebra::{Point3, UnitQuaternion};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use bincode::{deserialize, serialize};
 
@@ -8,12 +9,24 @@ use bincode::{deserialize, serialize};
 pub enum NetworkEvent{
     SendMsg(Vec<u8>),
     SendAudio(Vec<u8>),
+    SendPosition(Point3<f32>),
+    SendRotation(UnitQuaternion<f32>),
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum NetworkCommand{
+    CreatePlayerGameobject(u32),
+    ChangeGameObjectPosition(String, Point3<f32>),
+    ChangeGameObjectRotation(String, UnitQuaternion<f32>),
+    SendPlayerInfo(),
 }
 
 #[derive(Serialize, Deserialize)]
 enum MessageType{
     EncodedAudio(Vec<u8>, u32),
     PlayerConnected(u32),
+    GameObjectChangedPosition(String, Point3<f32>),
+    GameObjectChangedRotation(String, UnitQuaternion<f32>),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
 }
@@ -32,27 +45,31 @@ use cobalt::{
 
 pub struct Network{
     client: Client<UdpSocket, BinaryRateLimiter, NoopPacketModifier>,
-    pub tx: Sender<NetworkEvent>,
-    rx: Receiver<NetworkEvent>
+    pub tx_in: Sender<NetworkEvent>,
+    rx_in: Receiver<NetworkEvent>,
+    tx_out: Sender<NetworkCommand>,
 }
 
 impl Network {
-    pub fn new() -> Network{
+    pub fn new() -> (Network, Receiver<NetworkCommand>){
         use std::time::Duration;
 
         let mut config = Config::default();
-        let (tx, rx) = channel::<NetworkEvent>();
+        let (tx_in, rx_in) = channel::<NetworkEvent>();
+        let (tx_out, rx_out) = channel::<NetworkCommand>();
 
         config.connection_closing_threshold = Duration::from_millis(15000);
         config.connection_drop_threshold = Duration::from_millis(5000);
         config.connection_init_threshold = Duration::from_millis(15000);
         config.send_rate = 1024;
         let client = Client::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
-        Network{
+        (Network{
             client,
-            tx,
-            rx
-        }
+            tx_in,
+            rx_in,
+            tx_out
+        },
+        rx_out)
     }
 
     pub fn connect(&mut self, addr: String){
@@ -62,7 +79,7 @@ impl Network {
     pub fn init(&mut self, tx_audio: Sender<AudioEvent>){
         let mut opus_decoder = opus::Decoder::new(16000, opus::Channels::Mono).unwrap();
         loop{
-            for x in self.rx.try_iter(){
+            for x in self.rx_in.try_iter(){
                 if let Ok(conn) = self.client.connection() {
                     conn.send(MessageKind::Instant, serialize(&x).unwrap());
                 }
@@ -80,14 +97,23 @@ impl Network {
                             },
                             MessageType::PlayerConnected(id) => {
                                 let _ = tx_audio.send(AudioEvent::AddSource(format!("player{}", id).to_string()));
+                                let _ = self.tx_out.send(NetworkCommand::CreatePlayerGameobject(id));
+                                let _ = self.tx_out.send(NetworkCommand::SendPlayerInfo());
+                            },
+                            MessageType::GameObjectChangedPosition(name, position) => {
+                                let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectPosition(name, position));
+                            },
+                            MessageType::GameObjectChangedRotation(name, rotation) => {
+                                let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectRotation(name, rotation));
                             },
                             MessageType::ServerInfo(data) => {
                                 println!("Connected!");
                                 let server_info: ServerInfo = deserialize(&data).unwrap();
                                 for x in server_info.players{
-                                    println!("{}", x);
                                     let _ = tx_audio.send(AudioEvent::AddSource(format!("player{}", x).to_string()));
+                                    let _ = self.tx_out.send(NetworkCommand::CreatePlayerGameobject(x));
                                 }
+                                let _ = self.tx_out.send(NetworkCommand::SendPlayerInfo());
                             },
                             _ => {}
                         }

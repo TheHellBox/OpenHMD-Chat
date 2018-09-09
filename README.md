@@ -21,8 +21,10 @@ Run `cargo run --release` in main directory, or `cargo build --release` and then
   - [x] Camera
 - [ ] VR (OpenHMD)
   - [x] VR rendering
-  - [ ] VR gui
+  - [ 50% ] VR gui
   - [ ] VR controls
+  - [ ] Distortion correction
 - [ ] Assets loading from URL
 - [ ] Sync of player's position and rotation
 - [x] Voice Chat
+- [ ] Full LUA api
