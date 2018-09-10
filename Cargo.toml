@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["TheHellBox <hellboxstudio@yandex.ru>"]
 
 [dependencies]
-openhmd-rs="*"
+openhmd-rs="0.1.9"
 alto="3.0.1"
 cobalt="*"
 opus="*"
