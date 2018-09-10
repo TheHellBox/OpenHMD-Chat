@@ -7,12 +7,12 @@
 # OpenHMD-Chat
 OpenHMD-Chat is a crossplatform and opensource social VR app that can be used for voice chatting in virtual reality.
 
-# How to compile?
+# How to compile
 Run `cargo run --release` in main directory, or `cargo build --release` and then move openhmd-chat from /target/release/ to main directory
 
 # Dependencies
 ```
-libopenhmd, liblua5.2
+libopenhmd, liblua5.2, libopus-dev, openal-dev
 ```
 
 ### Road map
