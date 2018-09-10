@@ -46,6 +46,7 @@ pub struct Window{
     pub character_view: camera::CharacterView,
     pub scr_res: (u32, u32),
     pub mouse_pos: (u32, u32),
+    pub head_dir: UnitQuaternion<f32>,
     pub events: Vec<Event>
 }
 
@@ -111,6 +112,7 @@ impl Window{
             character_view: camera::CharacterView::new(),
             scr_res: (x_size, y_size),
             mouse_pos: (0, 0),
+            head_dir: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
             events: vec![]
         }
     }
@@ -170,12 +172,12 @@ impl Window{
         });
         self.events = events;
         self.mouse_pos = mouse_pos;
-        let mut head_rotation = UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0);
+        let mut head_rotation = self.character_view.rotation.inverse();
         if self.is_vr(){
             self.update_vr();
             if let &mut Some(ref mut ohmd_device) = &mut self.ohmd_device{
                 let rotation = ohmd_device.get_rotation_quat();
-                let rotation = UnitQuaternion::from_quaternion(Quaternion::new(-rotation[3], rotation[0], rotation[1], rotation[2]));
+                let rotation = UnitQuaternion::from_quaternion(Quaternion::new(rotation[3], rotation[0], rotation[1], rotation[2]));
                 head_rotation *= rotation;
             }
         }
@@ -187,7 +189,7 @@ impl Window{
                 None => {}
             };
         }
-        head_rotation *= self.character_view.rotation;
+        self.head_dir = head_rotation;
         let _ = net_tx.send(NetworkEvent::SendRotation(head_rotation));
     }
     pub fn update_vr(&mut self){

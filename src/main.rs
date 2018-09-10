@@ -9,6 +9,7 @@ extern crate conrod;
 #[macro_use]
 extern crate hlua;
 
+extern crate alga;
 extern crate rand;
 extern crate tobj;
 extern crate clap;
@@ -105,14 +106,14 @@ fn main() {
         .with_name("gui_go".to_string())
         .with_position(Point3::new(0.0, 0.7, 0.0))
         .with_scale((gui_scale.0 / 5.0, gui_scale.1 / 5.0, 0.1 / 5.0))
-        .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, -90.0, 0.0))
+        .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0))
         .with_render_object("ui_plane".to_string())
         .build();
 
     let scene_go = game::gameobject::GameObjectBuilder::new()
         .with_name("scene_go".to_string())
         .with_position(Point3::new(0.0, 0.0, 0.0))
-        .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, -90.0, 0.0))
+        .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0))
         .with_render_object("scene_01".to_string())
         .build();
 

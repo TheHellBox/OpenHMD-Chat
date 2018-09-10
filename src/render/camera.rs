@@ -32,12 +32,14 @@ impl CharacterView{
     pub fn new() -> CharacterView{
         CharacterView{
             position: rand_translation((-0.5, 0.5), (0.5, 0.6)),
-            rotation: UnitQuaternion::from_quaternion(Quaternion::new(1.0, 0.0, 0.0, 0.0)),
+            rotation: UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.0, 1.0, 0.0)),
         }
     }
     pub fn calc_view(&self) -> Matrix4<f32>{
-        let translation_matrix = self.position.to_homogeneous();
+        let mut position = self.position;
+        position.vector *= -1.0;
+        let translation_matrix = position.to_homogeneous();
         let rotation_matrix = self.rotation.to_homogeneous();
-        translation_matrix * rotation_matrix
+        rotation_matrix * translation_matrix
     }
 }
