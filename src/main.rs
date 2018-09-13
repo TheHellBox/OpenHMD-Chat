@@ -38,41 +38,21 @@ use clap::{Arg, App};
 
 fn main() {
     println!("Hello, world!");
-    let matches = App::new("OpenHMD-Chat")
-        .version("0.1")
-        .author("The HellBox <thehellbox11@gmail.com>")
-        .about("Online chat for VR")
-        .arg(Arg::with_name("addr")
-            .short("a")
-            .long("addr")
-            .help("Sets addr to connect to")
-            .takes_value(true))
-        .arg(Arg::with_name("vr")
-            .short("v")
-            .long("vr")
-            .help("VR mode"))
-        .get_matches();
 
-    println!("Main thread ID {}", process::id());
-    let mut vr_mode = false;
-
-    let addr = matches.value_of("addr").unwrap_or("127.0.0.1:4460").to_string();
-    let vr = matches.values_of_lossy("vr");
-    if vr.is_some(){
-        vr_mode = true;
-    }
+    let settings = game::settings::Settings::new();
 
     let frames = 1280;
     let sample_rate = 16000;
 
     let (mut network, mut net_rx) = network::Network::new();
     let mut net_tx = network.tx_in.clone();
+    let ip = settings.server_ip.clone();
 
     let audio = audio::AudioWrapper::new().unwrap();
     let tx_audio = audio.init(sample_rate, frames, net_tx.clone());
 
     thread::spawn(move || {
-        network.connect(addr);
+        network.connect(ip);
         network.init(tx_audio.clone());
     });
     // For fixed update, I know that I can do that in main thread, but...
@@ -85,7 +65,7 @@ fn main() {
         }
     });
 
-    let mut window = render::Window::new(1024, 768, "OpenHMD-Chat", vr_mode);
+    let mut window = render::Window::new("OpenHMD-Chat", &settings);
     window.init();
 
     let mut game = game::Game::new();
@@ -137,7 +117,7 @@ fn main() {
         scripting_eng.update(&mut game);
         ui.update(&mut window);
         window.draw(&game);
-        window.update(&mut net_tx);
+        window.update();
         thread::sleep(time::Duration::from_millis(1));
     }
 }

@@ -4,6 +4,7 @@ use nalgebra::core::{Matrix4, MatrixN};
 use glium::glutin::Event::WindowEvent;
 use glium::{glutin, Display, Program};
 use std::collections::HashMap;
+use game::settings::Settings;
 use network::NetworkEvent;
 use nalgebra::{UnitQuaternion, Quaternion};
 use openhmd_rs;
@@ -51,13 +52,13 @@ pub struct Window{
 }
 
 impl Window{
-    pub fn new(x_size: u32, y_size: u32, title: &'static str, vr: bool) -> Window{
+    pub fn new(title: &'static str, settings: &Settings) -> Window{
 
-        let mut x_size = x_size;
-        let mut y_size = y_size;
+        let mut x_size = settings.screen_resx;
+        let mut y_size = settings.screen_resy;
 
         let ohmd_context =
-            if vr {
+            if settings.vr_mode {
                 Some(openhmd_rs::Context::new())
             }
             else{
@@ -84,15 +85,21 @@ impl Window{
             format!("{}: Desktop", title)
         };
 
-        let window = WindowBuilder::new()
+        let events_loop = glutin::EventsLoop::new();
+
+        let mut window = WindowBuilder::new()
             .with_dimensions(x_size, y_size)
             .with_title(title);
+
+        if settings.full_screen {
+            let monitor = events_loop.get_available_monitors().nth(settings.output_display as usize);
+            window = window.with_fullscreen(monitor);
+        }
 
         let context = ContextBuilder::new()
             .with_depth_buffer(24)
             .with_vsync(false);
 
-        let events_loop = glutin::EventsLoop::new();
 
         let display = Display::new(window, context, &events_loop).unwrap();
         let _ = display.gl_window().window().set_cursor_state(glutin::CursorState::Hide);
@@ -155,7 +162,7 @@ impl Window{
         self.add_draw_area("vr_cam_left".to_string(), camera, (hmd_x / 2, hmd_y), (1.0, 2.0), (-1.0, -1.0), false);
         self.add_draw_area("vr_cam_right".to_string(), camera2, (hmd_x / 2, hmd_y), (1.0, 2.0), (0.0, -1.0), false);
     }
-    pub fn update(&mut self, net_tx: &mut Sender<NetworkEvent>){
+    pub fn update(&mut self){
         let mut events = vec![];
         let mut mouse_pos = self.mouse_pos;
         self.events_loop.poll_events(|event| {
@@ -190,7 +197,6 @@ impl Window{
             };
         }
         self.head_dir = head_rotation;
-        let _ = net_tx.send(NetworkEvent::SendRotation(head_rotation));
     }
     pub fn update_vr(&mut self){
         if let &mut Some(ref mut ohmd_context) = &mut self.ohmd_context{
