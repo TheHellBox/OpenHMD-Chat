@@ -48,7 +48,6 @@ impl Game{
                     match self.gameobjects.get_mut(&name){
                         Some(x) => {
                             x.position = position;
-                            println!("{}", position);
                         }
                         None => {
                             println!("Cannot find gameobject with name {}", name);
@@ -59,7 +58,6 @@ impl Game{
                     match self.gameobjects.get_mut(&name){
                         Some(x) => {
                             x.rotation = rotation;
-                            println!("{}", rotation);
                         }
                         None => {
                             println!("Cannot find gameobject with name {}", name);

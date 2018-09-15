@@ -41,7 +41,7 @@ fn main() {
 
     let settings = game::settings::Settings::new();
 
-    let frames = 1280;
+    let frames = 2048;
     let sample_rate = 16000;
 
     let (mut network, mut net_rx) = network::Network::new();

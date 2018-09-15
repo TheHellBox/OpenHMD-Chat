@@ -76,7 +76,7 @@ impl AudioWrapper{
             capture.start();
             loop{
                 let mut samples_len = capture.samples_len();
-                let mut buffer_i16: Vec<i16> = vec![0; frames as usize];
+                let mut buffer_i16: Vec<i16> = vec![0; 1280 as usize];
                 while samples_len < buffer_i16.len() as i32 {
                     samples_len = capture.samples_len();
                     thread::sleep(time::Duration::from_millis(1));
@@ -117,7 +117,7 @@ impl AudioWrapper{
                         src.play()
                     }
                 }
-                thread::sleep(time::Duration::from_millis(1));
+                thread::sleep(time::Duration::from_micros(10));
             }
         });
         tx_audio
