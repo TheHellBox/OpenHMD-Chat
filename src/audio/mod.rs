@@ -85,6 +85,7 @@ impl AudioWrapper{
                 let encoded = opus_encoder.encode_vec(&buffer_i16, sample_rate as usize).unwrap();
                 let _ = network_tx.send(NetworkEvent::SendAudio(encoded));
                 thread::sleep(time::Duration::from_millis(1));
+                println!("test");
             }
         });
 
@@ -94,6 +95,7 @@ impl AudioWrapper{
                 for buf in data{
                     match buf{
                         AudioEvent::Play(data, rate, source_name) => {
+                            println!("{:?}", data);
                             let buf = context.new_buffer::<Mono<i16>,_>(data, rate).unwrap();
                             let src = sources.get_mut(&source_name);
                             if let Some(src) = src{
