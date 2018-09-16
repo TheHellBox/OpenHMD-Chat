@@ -1,10 +1,10 @@
 use hlua;
+use std::fs;
 use hlua::Lua;
 use game::Game;
 use std::{thread};
 use std::fs::File;
 use render::Window;
-use std::path::Path;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Sender, Receiver};
@@ -110,10 +110,13 @@ impl ScriptingEngine{
                     }
                 } ));
             }
-            match lua.execute_from_reader::<(), _>(File::open(&Path::new("./assets/lua/test.lua")).unwrap()){
-                Ok(_) => {},
-                Err(err) => { println!("LUA ERROR: {}", err.description()); }
-            };
+            let paths = fs::read_dir("./assets/lua/").unwrap();
+            for path in paths {
+                match lua.execute_from_reader::<(), _>(File::open(path.unwrap().path()).unwrap()){
+                    Ok(_) => {},
+                    Err(err) => { println!("LUA ERROR: {}", err.description()); }
+                };
+            }
         });
         ScriptingEngine{
 
