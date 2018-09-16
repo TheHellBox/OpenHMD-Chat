@@ -77,19 +77,16 @@ fn main() {
     let gui_scale = (window.scr_res.0 as f32 / 20000.0, window.scr_res.1 as f32 / 20000.0);
 
     //Load models
-    let _ = window.load_model_and_push("./assets/models/cube/cube.obj".to_string(), "cube".to_string(), (0.1, 0.1, 0.1));
     let _ = window.load_model_and_push("./assets/models/ui_plane/ui_plane.obj".to_string(), "ui_plane".to_string(), (0.1, 0.1, 0.1));
-    let _ = window.load_model_and_push("./assets/models/scene/scene.obj".to_string(), "scene_01".to_string(), (0.1, 0.1, 0.1));
-
     // Create game objects
     let gui_go = game::gameobject::GameObjectBuilder::new()
         .with_name("gui_go".to_string())
         .with_position(Point3::new(0.0, 0.7, 0.0))
-        .with_scale((gui_scale.0 / 5.0, gui_scale.1 / 5.0, 0.1 / 5.0))
+        .with_scale((0.1, gui_scale.1, gui_scale.0))
         .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0))
         .with_render_object("ui_plane".to_string())
         .build();
-    
+
     // Spawn them
     game.spawn_game_object(gui_go);
 
@@ -106,7 +103,7 @@ fn main() {
         }
         *ticks.lock().unwrap() = 0;
 
-        scripting_eng.update(&mut game);
+        scripting_eng.update(&mut game, &mut window);
         ui.update(&mut window);
         window.draw(&game);
         window.update();

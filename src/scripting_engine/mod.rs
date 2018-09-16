@@ -3,6 +3,7 @@ use hlua::Lua;
 use game::Game;
 use std::{thread};
 use std::fs::File;
+use render::Window;
 use std::path::Path;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -24,6 +25,7 @@ pub enum LuaEvent{
     SetGameObjectPosition(String, (f32, f32, f32)),
     SpawnGameObject(GameObject),
     GetGameObjectPosition(String),
+    LoadModel(String, String),
     GetObjects()
 }
 
@@ -86,6 +88,10 @@ impl ScriptingEngine{
             {
                 let mut world = lua.empty_array("World");
                 world.set("create_game_object", hlua::function0(|| GameObjectBuilder::new() ));
+                world.set("load_model", hlua::function2(|path: String, name: String|{
+                    let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                    let _ = channels.send(LuaEvent::LoadModel(path, name));
+                }));
                 world.set("get_game_object", hlua::function1(|name: String| LuaEntity{name} ));
                 world.set("get_all_objects", hlua::function0(|| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
@@ -113,7 +119,7 @@ impl ScriptingEngine{
 
         }
     }
-    pub fn update(&mut self, game: &mut Game){
+    pub fn update(&mut self, game: &mut Game, window: &mut Window){
         use nalgebra::Point3;
         let channels = LUA_CHANNL_OUT.1.lock().unwrap();
         let data = channels.try_iter();
@@ -144,6 +150,9 @@ impl ScriptingEngine{
                     }
                     let channels = LUA_CHANNL_IN.0.lock().unwrap();
                     let _ = channels.send(LuaCommand::GetObjects(objects));
+                },
+                LuaEvent::LoadModel(path, name) => {
+                    let _ = window.load_model_and_push(path, name, (0.1, 0.1, 0.1));
                 },
                 _ => {}
             }
