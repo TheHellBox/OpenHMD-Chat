@@ -16,6 +16,7 @@ pub enum NetworkEvent{
 #[derive(Serialize, Deserialize)]
 pub enum NetworkCommand{
     CreatePlayerGameobject(u32),
+    RemovePlayerGameobject(u32),
     ChangeGameObjectPosition(String, Point3<f32>),
     ChangeGameObjectRotation(String, UnitQuaternion<f32>),
     SendPlayerInfo(),
@@ -25,6 +26,7 @@ pub enum NetworkCommand{
 enum MessageType{
     EncodedAudio(Vec<u8>, u32),
     PlayerConnected(u32),
+    PlayerDisconnected(u32),
     GameObjectChangedPosition(String, Point3<f32>),
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
     AudioEvent(Vec<u8>),
@@ -99,6 +101,10 @@ impl Network {
                                 let _ = tx_audio.send(AudioEvent::AddSource(format!("player{}", id).to_string()));
                                 let _ = self.tx_out.send(NetworkCommand::CreatePlayerGameobject(id));
                                 let _ = self.tx_out.send(NetworkCommand::SendPlayerInfo());
+                            },
+                            MessageType::PlayerDisconnected(id) => {
+                                let _ = tx_audio.send(AudioEvent::RemoveSource(format!("player{}", id).to_string()));
+                                let _ = self.tx_out.send(NetworkCommand::RemovePlayerGameobject(id));
                             },
                             MessageType::GameObjectChangedPosition(name, position) => {
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectPosition(name, position));

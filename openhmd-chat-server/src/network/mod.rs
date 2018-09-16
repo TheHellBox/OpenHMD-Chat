@@ -18,6 +18,7 @@ pub enum NetworkEvent{
 enum MessageType{
     EncodedAudio(Vec<u8>, u32),
     PlayerConnected(u32),
+    PlayerDisconnected(u32),
     GameObjectChangedPosition(String, Point3<f32>),
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
     AudioEvent(Vec<u8>),
@@ -119,6 +120,12 @@ impl Network {
                         let ConnectionID(player_id) = id;
                         self.server_info.players.retain(|i| *i == player_id);
                         println!("player{} has been disconected", player_id);
+                        for (_, conn) in self.server.connections() {
+                            if conn.id() != id{
+                                let player_disconnected = MessageType::PlayerDisconnected(player_id);
+                                conn.send(MessageKind::Reliable, serialize(&player_disconnected).unwrap());
+                            }
+                        }
                     },
                     _ => {}
                 }

@@ -9,6 +9,7 @@ use std::sync::mpsc::{channel, Sender};
 pub enum AudioEvent{
     Play(Vec<i16>, i32, String),
     AddSource(String),
+    RemoveSource(String)
 }
 
 pub struct AudioWrapper{
@@ -110,13 +111,15 @@ impl AudioWrapper{
                             let src = context.new_streaming_source().unwrap();
                             sources.insert(name, src);
                         },
+                        AudioEvent::RemoveSource(name) => {
+                            sources.remove(&name);
+                        },
                         _ => {}
                     }
                 }
                 for (_, src) in &mut sources{
                     if src.state() != SourceState::Playing {
                         src.play();
-                        let _ = src.unqueue_buffer();
                     }
                 }
                 thread::sleep(time::Duration::from_micros(10));

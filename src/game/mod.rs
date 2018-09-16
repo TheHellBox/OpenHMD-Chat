@@ -44,6 +44,9 @@ impl Game{
                         .build();
                     self.spawn_game_object(player);
                 },
+                NetworkCommand::RemovePlayerGameobject(id) => {
+                    self.gameobjects.remove(&format!("player{}", id).to_string());
+                },
                 NetworkCommand::ChangeGameObjectPosition(name, position) => {
                     match self.gameobjects.get_mut(&name){
                         Some(x) => {
