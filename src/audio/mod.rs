@@ -115,7 +115,8 @@ impl AudioWrapper{
                 }
                 for (_, src) in &mut sources{
                     if src.state() != SourceState::Playing {
-                        src.play()
+                        src.play();
+                        let _ = src.unqueue_buffer();
                     }
                 }
                 thread::sleep(time::Duration::from_micros(10));
