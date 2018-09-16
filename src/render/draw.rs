@@ -74,7 +74,17 @@ impl Window{
                 ).unwrap();
             }
             else{
-
+                if let &Some(ref hmd_params) = &self.hmd_params{
+                    let warp_scale = hmd_params.left_lens_center[0] / hmd_params.right_lens_center[0] ;
+                    target.draw(
+                        &vertex_buf,
+                        &index_buffer,
+                        self.shaders.get("distortion_correction").unwrap(),
+                        &uniform! {  warpTexture: &area_tex, mvp: mat, LensCenter: hmd_params.right_lens_center,ViewportScale: hmd_params.view_port_scale, WarpScale: warp_scale,
+                            HmdWarpParam: hmd_params.distortion_k, aberr: hmd_params.aberration_k},
+                        &get_params()
+                    ).unwrap();
+                }
             }
         }
         target.finish().unwrap();

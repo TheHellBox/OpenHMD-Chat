@@ -8,8 +8,10 @@ use game::settings::Settings;
 use network::NetworkEvent;
 use nalgebra::{UnitQuaternion, Quaternion};
 use openhmd_rs;
+use nalgebra;
 
 pub mod default_shaders;
+pub mod ohmd_params;
 pub mod camera;
 pub mod model;
 pub mod draw;
@@ -44,6 +46,7 @@ pub struct Window{
     pub draw_buffer: draw::DrawBuffer,
     pub ohmd_context: Option<openhmd_rs::Context>,
     pub ohmd_device: Option<openhmd_rs::Device>,
+    pub hmd_params: Option<ohmd_params::HMDParams>,
     pub character_view: camera::CharacterView,
     pub scr_res: (u32, u32),
     pub mouse_pos: (u32, u32),
@@ -77,7 +80,13 @@ impl Window{
             else{
                 None
             };
-
+        let hmd_params =
+            if let &Some(ref ohmd_device) = &ohmd_device{
+                Some(ohmd_params::gen_ohmd_params(ohmd_device))
+            }
+            else{
+                None
+            };
         let title = if ohmd_context.is_some(){
             format!("{}: VR", title)
         }
@@ -116,6 +125,7 @@ impl Window{
             },
             ohmd_context,
             ohmd_device,
+            hmd_params,
             character_view: camera::CharacterView::new(),
             scr_res: (x_size, y_size),
             mouse_pos: (0, 0),
@@ -131,6 +141,7 @@ impl Window{
         self.add_shader("simple", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SIMPLE_FRAG);
         self.add_shader("solid", default_shaders::SHADER_SIMPLE_VERT, default_shaders::SHADER_SOLID_FRAG);
         self.add_shader("solid_2d", default_shaders::SHADER_SIMPLE_2D_VERT, default_shaders::SHADER_SOLID_FRAG);
+        self.add_shader("distortion_correction", default_shaders::SHADER_DISTORTION_VERT, default_shaders::SHADER_DISTORTION_FRAG);
 
         let scr_w = self.scr_res.0;
         let scr_h = self.scr_res.1;
@@ -159,8 +170,8 @@ impl Window{
             camera.perspective = proj_l;
             camera2.perspective = proj_r;
         }
-        self.add_draw_area("vr_cam_left".to_string(), camera, (hmd_x / 2, hmd_y), (1.0, 2.0), (-1.0, -1.0), false);
-        self.add_draw_area("vr_cam_right".to_string(), camera2, (hmd_x / 2, hmd_y), (1.0, 2.0), (0.0, -1.0), false);
+        self.add_draw_area("vr_cam_left".to_string(), camera, (hmd_x / 2, hmd_y), (1.0, 2.0), (-1.0, -1.0), true);
+        self.add_draw_area("vr_cam_right".to_string(), camera2, (hmd_x / 2, hmd_y), (1.0, 2.0), (0.0, -1.0), true);
     }
     pub fn update(&mut self){
         let mut events = vec![];
@@ -228,4 +239,13 @@ pub fn mat16_to_nalg(mat: [f32;16]) ->Matrix4<f32>{
         raw[x] = mat[x];
     }
     raw
+}
+pub fn m16_to_4x4(mat: [f32; 16]) -> [[f32;4]; 4]{
+    let mat = [
+        [mat[0], mat[1], mat[2], mat[3]],
+        [mat[4], mat[5], mat[6], mat[7]],
+        [mat[8], mat[9], mat[10], mat[11]],
+        [mat[12], mat[13], mat[14], mat[15]],
+    ];
+    mat
 }
