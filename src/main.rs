@@ -37,8 +37,6 @@ use clap::{Arg, App};
 
 
 fn main() {
-    println!("Hello, world!");
-
     let settings = game::settings::Settings::new();
 
     let frames = 2048;

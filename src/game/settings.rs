@@ -9,7 +9,6 @@ pub struct Settings{
 impl Settings{
     pub fn new() -> Settings{
         use clap::{Arg, App};
-        println!("Hello, world!");
         let matches = App::new("OpenHMD-Chat")
             .version("0.1")
             .author("The HellBox <thehellbox11@gmail.com>")
