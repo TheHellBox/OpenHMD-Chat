@@ -16,18 +16,22 @@ pub enum NetworkEvent{
 #[derive(Serialize, Deserialize)]
 pub enum NetworkCommand{
     CreatePlayerGameobject(u32),
+    CreateGameobject(String),
     RemovePlayerGameobject(u32),
     ChangeGameObjectPosition(String, Point3<f32>),
     ChangeGameObjectRotation(String, UnitQuaternion<f32>),
+    ChangeGameObjectModel(String, String),
     SendPlayerInfo(),
 }
 
 #[derive(Serialize, Deserialize)]
-enum MessageType{
+pub enum MessageType{
     EncodedAudio(Vec<u8>, u32),
     PlayerConnected(u32),
     PlayerDisconnected(u32),
+    CreateGameObject(String),
     GameObjectChangedPosition(String, Point3<f32>),
+    GameObjectChangedModel(String, String),
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
@@ -106,11 +110,17 @@ impl Network {
                                 let _ = tx_audio.send(AudioEvent::RemoveSource(format!("player{}", id).to_string()));
                                 let _ = self.tx_out.send(NetworkCommand::RemovePlayerGameobject(id));
                             },
+                            MessageType::CreateGameObject(name) => {
+                                let _ = self.tx_out.send(NetworkCommand::CreateGameobject(name));
+                            },
                             MessageType::GameObjectChangedPosition(name, position) => {
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectPosition(name, position));
                             },
                             MessageType::GameObjectChangedRotation(name, rotation) => {
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectRotation(name, rotation));
+                            },
+                            MessageType::GameObjectChangedModel(name, model) => {
+                                let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectModel(name, model));
                             },
                             MessageType::ServerInfo(data) => {
                                 println!("Connected!");

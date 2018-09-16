@@ -1,5 +1,7 @@
 use std::{thread, time};
+use std::sync::mpsc::{Sender, Receiver};
 use bincode::{serialize, deserialize};
+use std::sync::mpsc::channel;
 use nalgebra::{Translation3, Point3, UnitQuaternion};
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
@@ -14,15 +16,26 @@ pub enum NetworkEvent{
     SendRotation(UnitQuaternion<f32>),
 }
 
+pub enum NetworkCommand{
+    SendGameObjects(u32)
+}
+
 #[derive(Serialize, Deserialize)]
-enum MessageType{
+pub enum MessageType{
     EncodedAudio(Vec<u8>, u32),
     PlayerConnected(u32),
     PlayerDisconnected(u32),
+    CreateGameObject(String),
     GameObjectChangedPosition(String, Point3<f32>),
+    GameObjectChangedModel(String, String),
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
+}
+
+pub enum MsgDst{
+    Boardcast(),
+    Id(u32)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -34,11 +47,14 @@ pub struct ServerInfo{
 
 pub struct Network {
     pub server: Server<UdpSocket,BinaryRateLimiter,NoopPacketModifier>,
-    pub server_info: ServerInfo
+    pub server_info: ServerInfo,
+    pub tx_in: Sender<(MessageKind, MessageType, MsgDst)>,
+    rx_in: Receiver<(MessageKind, MessageType, MsgDst)>,
+    tx_out: Sender<NetworkCommand>,
 }
 
 impl Network {
-    pub fn new() -> Network{
+    pub fn new() -> (Network, Receiver<NetworkCommand>){
         use std::time::Duration;
 
         let mut config = Config::default();
@@ -52,10 +68,16 @@ impl Network {
             send_rate: 1024,
             audio_quality: 16000
         };
-        Network{
+        let (tx_in, rx_in) = channel::<(MessageKind, MessageType, MsgDst)>();
+        let (tx_out, rx_out) = channel::<NetworkCommand>();
+        (Network{
             server,
-            server_info
-        }
+            server_info,
+            tx_in,
+            rx_in,
+            tx_out
+        },
+        rx_out)
     }
 
     pub fn listen(&mut self, ip: &'static str){
@@ -64,6 +86,11 @@ impl Network {
 
     pub fn init(&mut self){
         loop{
+            for x in self.rx_in.try_iter(){
+                for (_, conn) in self.server.connections() {
+                    conn.send(x.0, serialize(&x.1).unwrap());
+                }
+            }
             while let Ok(event) = self.server.accept_receive() {
                 match event{
                     ServerEvent::Message(id, message) => {
@@ -112,6 +139,7 @@ impl Network {
                             else{
                                 let server_info_raw = serialize(&self.server_info).unwrap();
                                 let server_info = serialize(&MessageType::ServerInfo(server_info_raw)).unwrap();
+                                self.tx_out.send(NetworkCommand::SendGameObjects(id_u32));
                                 conn.send(MessageKind::Reliable, server_info);
                             }
                         }

@@ -5,7 +5,9 @@ use std::{thread};
 use std::fs::File;
 use std::path::Path;
 use std::error::Error;
+use cobalt::MessageKind;
 use std::sync::{Arc, Mutex};
+use network::{MessageType, MsgDst};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use game::gameobject::{GameObjectBuilder, GameObject};
 
@@ -113,19 +115,24 @@ impl ScriptingEngine{
 
         }
     }
-    pub fn update(&mut self, game: &mut Game){
+    pub fn update(&mut self, game: &mut Game, net_tx: &mut Sender<(MessageKind, MessageType, MsgDst)>){
         use nalgebra::Point3;
         let channels = LUA_CHANNL_OUT.1.lock().unwrap();
         let data = channels.try_iter();
         for x in data{
             match x{
                 LuaEvent::SpawnGameObject(game_object) => {
+                    net_tx.send((MessageKind::Reliable, MessageType::CreateGameObject(game_object.name.clone()), MsgDst::Boardcast()));
+                    net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedPosition(game_object.name.clone(), game_object.position), MsgDst::Boardcast()));
+                    net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedRotation(game_object.name.clone(), game_object.rotation), MsgDst::Boardcast()));
+                    net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedModel(game_object.name.clone(), game_object.render_object.clone()), MsgDst::Boardcast()));
                     game.spawn_game_object(game_object);
                 },
                 LuaEvent::SetGameObjectPosition(name, pos) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
                         x.set_position(Point3::new(pos.0, pos.1, pos.2))
                     }
+                    net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name, Point3::new(pos.0, pos.1, pos.2)), MsgDst::Boardcast()));
                 },
                 LuaEvent::GetGameObjectPosition(name) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){

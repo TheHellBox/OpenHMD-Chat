@@ -58,7 +58,7 @@ impl GameObjectBuilder{
             render_object: "none".to_string(),
             physic_body: 0,
             position: Point3::new(0.0, 0.0, 0.0),
-            rotation: UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.0, 0.0, 1.0)),
+            rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
         }
     }
     pub fn with_name(self, name: String) -> Self{

@@ -89,17 +89,9 @@ fn main() {
         .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0))
         .with_render_object("ui_plane".to_string())
         .build();
-
-    let scene_go = game::gameobject::GameObjectBuilder::new()
-        .with_name("scene_go".to_string())
-        .with_position(Point3::new(0.0, 0.0, 0.0))
-        .with_rotation_unit(UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0))
-        .with_render_object("scene_01".to_string())
-        .build();
-
+    
     // Spawn them
     game.spawn_game_object(gui_go);
-    game.spawn_game_object(scene_go);
 
     loop{
         {

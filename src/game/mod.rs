@@ -44,6 +44,13 @@ impl Game{
                         .build();
                     self.spawn_game_object(player);
                 },
+                NetworkCommand::CreateGameobject(name) => {
+                    let gameobject = gameobject::GameObjectBuilder::new()
+                        .with_name(name)
+                        .build();
+                    self.spawn_game_object(gameobject);
+                    println!("CreateGameObject");
+                },
                 NetworkCommand::RemovePlayerGameobject(id) => {
                     self.gameobjects.remove(&format!("player{}", id).to_string());
                 },
@@ -51,6 +58,17 @@ impl Game{
                     match self.gameobjects.get_mut(&name){
                         Some(x) => {
                             x.position = position;
+                        }
+                        None => {
+                            println!("Cannot find gameobject with name {}", name);
+                        }
+                    }
+                },
+                NetworkCommand::ChangeGameObjectModel(name, model) => {
+                    match self.gameobjects.get_mut(&name){
+                        Some(x) => {
+                            x.render_object = model;
+                            println!("GameObjectChangedRotation");
                         }
                         None => {
                             println!("Cannot find gameobject with name {}", name);
