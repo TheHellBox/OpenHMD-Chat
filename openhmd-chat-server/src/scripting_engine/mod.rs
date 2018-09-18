@@ -27,6 +27,7 @@ pub enum LuaEvent{
     SetGameObjectPosition(String, (f32, f32, f32)),
     SpawnGameObject(GameObject),
     GetGameObjectPosition(String),
+    SendLua(String, u32),
     GetObjects()
 }
 
@@ -87,6 +88,10 @@ impl ScriptingEngine{
             //init
             lua.openlibs();
             {
+                lua.set("send_lua", hlua::function2(|script: String, id: u32|{
+                    let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                    let _ = channels.send(LuaEvent::SendLua(script, id));
+                }));
                 let mut world = lua.empty_array("World");
                 world.set("create_game_object", hlua::function0(|| GameObjectBuilder::new() ));
                 world.set("get_game_object", hlua::function1(|name: String| LuaEntity{name} ));
@@ -147,6 +152,9 @@ impl ScriptingEngine{
                         let channels = LUA_CHANNL_IN.0.lock().unwrap();
                         let _ = channels.send(LuaCommand::GetGameObjectPosition(vec![0.0, 0.0, 0.0]));
                     }
+                },
+                LuaEvent::SendLua(script, id) => {
+                    net_tx.send((MessageKind::Reliable, MessageType::LuaScript(script), MsgDst::Id(id)));
                 },
                 LuaEvent::GetObjects() => {
                     let mut objects = vec![];

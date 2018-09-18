@@ -31,6 +31,7 @@ pub enum MessageType{
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
+    LuaScript(String),
 }
 
 pub enum MsgDst{

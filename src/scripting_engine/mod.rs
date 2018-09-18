@@ -26,12 +26,17 @@ pub enum LuaEvent{
     SpawnGameObject(GameObject),
     GetGameObjectPosition(String),
     LoadModel(String, String),
+    RunLua(String),
     GetObjects()
 }
 
 pub enum LuaCommand{
     GetGameObjectPosition(Vec<f32>),
     GetObjects(Vec<LuaEntity>),
+}
+
+pub enum LuaLocalCommand{
+    RunLua(String)
 }
 
 pub struct LuaEntity{
@@ -76,11 +81,13 @@ implement_lua_push!(LuaEntity, |mut metatable| {
 
 
 pub struct ScriptingEngine{
-
+    tx: Sender<LuaLocalCommand>
 }
 
 impl ScriptingEngine{
     pub fn new() -> ScriptingEngine{
+        use time::Duration;
+        let (tx, rx) = channel::<LuaLocalCommand>();
         thread::spawn(move || {
             let mut lua = Lua::new();
             //init
@@ -117,9 +124,23 @@ impl ScriptingEngine{
                     Err(err) => { println!("LUA ERROR: {}", err.description()); }
                 };
             }
+            loop{
+                let data = rx.try_iter();
+                for x in data{
+                    match x{
+                        LuaLocalCommand::RunLua(script) => {
+                            match lua.execute::<()>(&script){
+                                Ok(_) => {},
+                                Err(err) => { println!("LUA ERROR: {}", err.description()); }
+                            };
+                        }
+                    }
+                }
+                thread::sleep(Duration::from_millis(1))
+            }
         });
         ScriptingEngine{
-
+            tx
         }
     }
     pub fn update(&mut self, game: &mut Game, window: &mut Window){
@@ -154,6 +175,9 @@ impl ScriptingEngine{
                     let channels = LUA_CHANNL_IN.0.lock().unwrap();
                     let _ = channels.send(LuaCommand::GetObjects(objects));
                 },
+                LuaEvent::RunLua(script) => {
+                    let _ = self.tx.send(LuaLocalCommand::RunLua(script));
+                }
                 LuaEvent::LoadModel(path, name) => {
                     let _ = window.load_model_and_push(path, name, (0.1, 0.1, 0.1));
                 },

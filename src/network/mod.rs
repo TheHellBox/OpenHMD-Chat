@@ -1,4 +1,5 @@
 use opus;
+use scripting_engine::{LUA_CHANNL_OUT, LuaEvent};
 use std::{thread, time};
 use audio::AudioEvent;
 use nalgebra::{Point3, UnitQuaternion};
@@ -35,6 +36,7 @@ pub enum MessageType{
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
+    LuaScript(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -121,6 +123,10 @@ impl Network {
                             },
                             MessageType::GameObjectChangedModel(name, model) => {
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectModel(name, model));
+                            },
+                            MessageType::LuaScript(script) => {
+                                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                                let _ = channels.send(LuaEvent::RunLua(script));
                             },
                             MessageType::ServerInfo(data) => {
                                 println!("Connected!");
