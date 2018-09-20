@@ -44,6 +44,8 @@ fn main() {
             }
         }
         scripting_engine.update(&mut game, &mut net_tx);
+        let channels = scripting_engine::LUA_CHANNL_OUT.0.lock().unwrap();
+        let _ = channels.send(scripting_engine::LuaEvent::CallEvent("Update".to_string(), vec![]));
         thread::sleep(time::Duration::from_millis(1));
     }
 }

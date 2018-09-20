@@ -96,15 +96,16 @@ fn main() {
             }
         }
         game.update(&mut net_rx, &mut net_tx, &mut window);
-        for _ in 0..*ticks.lock().unwrap(){
-            game.fixed_update();
-        }
-        *ticks.lock().unwrap() = 0;
-
         scripting_eng.update(&mut game, &mut window);
         ui.update(&mut window);
         window.draw(&game);
         window.update();
-        thread::sleep(time::Duration::from_millis(1));
+        let channels = scripting_engine::LUA_CHANNL_OUT.0.lock().unwrap();
+        for _ in 0..*ticks.lock().unwrap(){
+            game.fixed_update();
+            let _ = channels.send(scripting_engine::LuaEvent::CallEvent("FixedUpdate".to_string(), vec![]));
+        }
+        *ticks.lock().unwrap() = 0;
+        let _ = channels.send(scripting_engine::LuaEvent::CallEvent("Update".to_string(), vec![]));
     }
 }

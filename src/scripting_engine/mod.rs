@@ -1,6 +1,6 @@
 use hlua;
 use std::fs;
-use hlua::Lua;
+use hlua::{Lua, AnyLuaValue};
 use game::Game;
 use std::{thread};
 use std::fs::File;
@@ -23,6 +23,7 @@ lazy_static! {
 
 pub enum LuaEvent{
     SetGameObjectPosition(String, (f32, f32, f32)),
+    CallEvent(String, Vec<AnyLuaValue>),
     SpawnGameObject(GameObject),
     GetGameObjectPosition(String),
     LoadModel(String, String),
@@ -36,7 +37,8 @@ pub enum LuaCommand{
 }
 
 pub enum LuaLocalCommand{
-    RunLua(String)
+    RunLua(String),
+    CallEvent(String, Vec<AnyLuaValue>)
 }
 
 pub struct LuaEntity{
@@ -134,6 +136,21 @@ impl ScriptingEngine{
                                 Err(err) => { println!("LUA ERROR: {}", err.description()); }
                             };
                         }
+                        LuaLocalCommand::CallEvent(name, args) => {
+                            let mut call_event_fn: Option<hlua::LuaFunction<_>> = lua.get("CallEvent");
+                            if let Some(mut call_event) = call_event_fn{
+                                let result: Option<hlua::AnyLuaValue> = match call_event.call_with_args((name, args)) {
+                                    Ok(res) => {Some(res)},
+                                    Err(err) => {
+                                        println!("LUA ERROR: {:?}", err);
+                                        None
+                                    },
+                                };
+                            }
+                            else{
+                                println!("Cannot call CallEvent function. Does events.lua properly loaded?");
+                            }
+                        }
                     }
                 }
                 thread::sleep(Duration::from_millis(1))
@@ -178,6 +195,9 @@ impl ScriptingEngine{
                 LuaEvent::RunLua(script) => {
                     let _ = self.tx.send(LuaLocalCommand::RunLua(script));
                 }
+                LuaEvent::CallEvent(name, args) => {
+                    let _ = self.tx.send(LuaLocalCommand::CallEvent(name, args));
+                },
                 LuaEvent::LoadModel(path, name) => {
                     let _ = window.load_model_and_push(path, name, (0.1, 0.1, 0.1));
                 },

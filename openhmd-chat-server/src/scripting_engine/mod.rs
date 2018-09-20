@@ -1,6 +1,6 @@
 use hlua;
 use std::fs;
-use hlua::Lua;
+use hlua::{Lua, AnyLuaValue};
 use game::Game;
 use std::{thread};
 use std::fs::File;
@@ -25,6 +25,7 @@ lazy_static! {
 
 pub enum LuaEvent{
     SetGameObjectPosition(String, (f32, f32, f32)),
+    CallEvent(String, Vec<AnyLuaValue>),
     SpawnGameObject(GameObject),
     GetGameObjectPosition(String),
     SendLua(String, u32),
@@ -34,6 +35,10 @@ pub enum LuaEvent{
 pub enum LuaCommand{
     GetGameObjectPosition(Vec<f32>),
     GetObjects(Vec<LuaEntity>),
+}
+
+pub enum LuaLocalCommand{
+    CallEvent(String, Vec<AnyLuaValue>)
 }
 
 pub struct LuaEntity{
@@ -78,11 +83,13 @@ implement_lua_push!(LuaEntity, |mut metatable| {
 
 
 pub struct ScriptingEngine{
-
+    tx: Sender<LuaLocalCommand>
 }
 
 impl ScriptingEngine{
     pub fn new() -> ScriptingEngine{
+        use time::Duration;
+        let (tx, rx) = channel::<LuaLocalCommand>();
         thread::spawn(move || {
             let mut lua = Lua::new();
             //init
@@ -119,9 +126,32 @@ impl ScriptingEngine{
                     Err(err) => { println!("LUA ERROR: {}", err.description()); }
                 };
             }
+            loop{
+                let data = rx.try_iter();
+                for x in data{
+                    match x{
+                        LuaLocalCommand::CallEvent(name, args) => {
+                            let mut call_event_fn: Option<hlua::LuaFunction<_>> = lua.get("CallEvent");
+                            if let Some(mut call_event) = call_event_fn{
+                                let result: Option<hlua::AnyLuaValue> = match call_event.call_with_args((name, args)) {
+                                    Ok(res) => {Some(res)},
+                                    Err(err) => {
+                                        println!("LUA ERROR: {:?}", err);
+                                        None
+                                    },
+                                };
+                            }
+                            else{
+                                println!("Cannot call CallEvent function. Does events.lua properly loaded?");
+                            }
+                        }
+                    }
+                }
+                thread::sleep(Duration::from_millis(1))
+            }
         });
         ScriptingEngine{
-
+            tx
         }
     }
     pub fn update(&mut self, game: &mut Game, net_tx: &mut Sender<(MessageKind, MessageType, MsgDst)>){
@@ -155,6 +185,9 @@ impl ScriptingEngine{
                 },
                 LuaEvent::SendLua(script, id) => {
                     net_tx.send((MessageKind::Reliable, MessageType::LuaScript(script), MsgDst::Id(id)));
+                },
+                LuaEvent::CallEvent(name, args) => {
+                    let _ = self.tx.send(LuaLocalCommand::CallEvent(name, args));
                 },
                 LuaEvent::GetObjects() => {
                     let mut objects = vec![];

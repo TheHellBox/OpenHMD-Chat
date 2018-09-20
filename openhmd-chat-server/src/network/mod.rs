@@ -2,6 +2,8 @@ use std::{thread, time};
 use std::sync::mpsc::{Sender, Receiver};
 use bincode::{serialize, deserialize};
 use std::sync::mpsc::channel;
+use hlua::AnyLuaValue;
+use scripting_engine::{LUA_CHANNL_OUT, LuaEvent};
 use nalgebra::{Translation3, Point3, UnitQuaternion};
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
@@ -144,6 +146,8 @@ impl Network {
                                 conn.send(MessageKind::Reliable, server_info);
                             }
                         }
+                        let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                        let _ = channels.send(LuaEvent::CallEvent("OnClientConnected".to_string(), vec![AnyLuaValue::LuaNumber(id_u32 as f64)]));
                     },
                     ServerEvent::ConnectionLost(id, _) => {
                         let ConnectionID(player_id) = id;
