@@ -21,12 +21,12 @@ libopenhmd, liblua5.2, libopus-dev, openal-dev
   - [x] Mesh rendering
   - [x] Texture rendering
   - [x] Camera
-- [ ] VR (OpenHMD)
+- [x] VR (OpenHMD)
   - [x] VR rendering
   - [ 50% ] VR gui
   - [x] VR controls
-  - [ ] Distortion correction
+  - [x] Distortion correction
 - [ ] Assets loading from URL
 - [x] Sync of player's position and rotation
 - [x] Voice Chat
-- [ ] Full LUA api
+- [x] Full LUA api
