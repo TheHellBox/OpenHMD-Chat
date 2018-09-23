@@ -26,7 +26,7 @@ libopenhmd, liblua5.2, libopus-dev, openal-dev
   - [ 50% ] VR gui
   - [x] VR controls
   - [x] Distortion correction
-- [ ] Assets loading from URL
+- [x] Assets downloading from URL
 - [x] Sync of player's position and rotation
 - [x] Voice Chat
 - [x] Full LUA api
