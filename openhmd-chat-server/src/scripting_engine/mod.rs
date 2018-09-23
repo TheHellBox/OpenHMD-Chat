@@ -95,10 +95,6 @@ impl ScriptingEngine{
             //init
             lua.openlibs();
             {
-                lua.set("send_lua", hlua::function2(|script: String, id: u32|{
-                    let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                    let _ = channels.send(LuaEvent::SendLua(script, id));
-                }));
                 let mut world = lua.empty_array("World");
                 world.set("create_game_object", hlua::function0(|| GameObjectBuilder::new() ));
                 world.set("get_game_object", hlua::function1(|name: String| LuaEntity{name} ));
@@ -118,6 +114,13 @@ impl ScriptingEngine{
                         vec![]
                     }
                 } ));
+            }
+            {
+                let mut network = lua.empty_array("Network");
+                network.set("send_lua", hlua::function2(|script: String, id: u32|{
+                    let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                    let _ = channels.send(LuaEvent::SendLua(script, id));
+                }));
             }
             let paths = fs::read_dir("./assets/lua/").unwrap();
             for path in paths {

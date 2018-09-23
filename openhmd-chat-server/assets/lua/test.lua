@@ -7,5 +7,5 @@ print(ent:name())
 
 AddEvent("OnClientConnected", "preload_models", function(id)
   script = "World.load_model('./assets/models/scene/scene.obj', 'scene_01')"
-  send_lua(script, id)
+  Network.send_lua(script, id)
 end)

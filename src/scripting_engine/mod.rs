@@ -2,11 +2,14 @@ use hlua;
 use std::fs;
 use hlua::{Lua, AnyLuaValue};
 use game::Game;
+use std::io::copy;
 use std::{thread};
 use std::fs::File;
+use std::path::Path;
 use render::Window;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
+use reqwest;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use game::gameobject::{GameObjectBuilder, GameObject};
 
@@ -27,6 +30,8 @@ pub enum LuaEvent{
     SpawnGameObject(GameObject),
     GetGameObjectPosition(String),
     LoadModel(String, String),
+    DownloadFile(String),
+    RunLuaFile(String),
     RunLua(String),
     GetObjects()
 }
@@ -38,6 +43,7 @@ pub enum LuaCommand{
 
 pub enum LuaLocalCommand{
     RunLua(String),
+    RunLuaFile(String),
     CallEvent(String, Vec<AnyLuaValue>)
 }
 
@@ -94,6 +100,10 @@ impl ScriptingEngine{
             let mut lua = Lua::new();
             //init
             lua.openlibs();
+            lua.set("run_lua_file", hlua::function1(|path: String| {
+                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                let _ = channels.send(LuaEvent::RunLuaFile(path));
+            } ));
             {
                 let mut world = lua.empty_array("World");
                 world.set("create_game_object", hlua::function0(|| GameObjectBuilder::new() ));
@@ -119,6 +129,13 @@ impl ScriptingEngine{
                     }
                 } ));
             }
+            {
+                let mut network = lua.empty_array("Network");
+                network.set("download_file", hlua::function1(|url: String| {
+                    let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                    let _ = channels.send(LuaEvent::DownloadFile(url));
+                } ));
+            }
             let paths = fs::read_dir("./assets/lua/").unwrap();
             for path in paths {
                 match lua.execute_from_reader::<(), _>(File::open(path.unwrap().path()).unwrap()){
@@ -132,6 +149,12 @@ impl ScriptingEngine{
                     match x{
                         LuaLocalCommand::RunLua(script) => {
                             match lua.execute::<()>(&script){
+                                Ok(_) => {},
+                                Err(err) => { println!("LUA ERROR: {}", err.description()); }
+                            };
+                        }
+                        LuaLocalCommand::RunLuaFile(path) => {
+                            match lua.execute_from_reader::<(), _>(File::open(path).unwrap()){
                                 Ok(_) => {},
                                 Err(err) => { println!("LUA ERROR: {}", err.description()); }
                             };
@@ -186,7 +209,7 @@ impl ScriptingEngine{
                 },
                 LuaEvent::GetObjects() => {
                     let mut objects = vec![];
-                    for (name, x) in &game.gameobjects{
+                    for (name, _) in &game.gameobjects{
                         objects.push(LuaEntity{name: name.clone()});
                     }
                     let channels = LUA_CHANNL_IN.0.lock().unwrap();
@@ -194,6 +217,54 @@ impl ScriptingEngine{
                 },
                 LuaEvent::RunLua(script) => {
                     let _ = self.tx.send(LuaLocalCommand::RunLua(script));
+                }
+                LuaEvent::RunLuaFile(path) => {
+                    let _ = self.tx.send(LuaLocalCommand::RunLuaFile(path));
+                }
+                LuaEvent::DownloadFile(url) => {
+                    let mut response = reqwest::get(&url).unwrap();
+                    let mut dest = {
+                        let fname = Path::new(response
+                            .url()
+                            .path_segments()
+                            .and_then(|segments| segments.last())
+                            .and_then(|name| if name.is_empty() { None } else { Some(name) })
+                            .unwrap_or("tmp.bin"));
+                        let extension = fname.extension().unwrap().to_str().unwrap();
+                        let dir = match extension{
+                            "obj" => {
+                                Some(Path::new("models/"))
+                            },
+                            "mtl" => {
+                                Some(Path::new("models/"))
+                            },
+                            "png" => {
+                                Some(Path::new("textures/"))
+                            },
+                            "jpg" => {
+                                Some(Path::new("textures/"))
+                            },
+                            "lua" => {
+                                println!("test");
+                                Some(Path::new("temp/"))
+                            },
+                            _ => {
+                                None
+                            }
+                        };
+                        match dir{
+                            Some(dir) => {
+                                let mut path = Path::new("./assets/").join(dir);
+                                Some(File::create(path.join(fname)).unwrap())
+                            }
+                            None => {
+                                None
+                            }
+                        }
+                    };
+                    if let Some(mut dest) = dest{
+                        copy(&mut response, &mut dest).unwrap();
+                    }
                 }
                 LuaEvent::CallEvent(name, args) => {
                     let _ = self.tx.send(LuaLocalCommand::CallEvent(name, args));

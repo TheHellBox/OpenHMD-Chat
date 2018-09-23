@@ -18,6 +18,7 @@ extern crate alto;
 extern crate serde;
 extern crate image;
 extern crate cobalt;
+extern crate reqwest;
 extern crate bincode;
 extern crate nalgebra;
 extern crate openhmd_rs;
@@ -34,7 +35,6 @@ use nalgebra::geometry::{Point3, UnitQuaternion};
 use std::sync::{Arc, Mutex};
 use std::{thread, time, process};
 use clap::{Arg, App};
-
 
 fn main() {
     let settings = game::settings::Settings::new();

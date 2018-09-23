@@ -1,4 +1,1 @@
-
-AddEvent("Update", "test", function()
-
-end)
+print("init")
