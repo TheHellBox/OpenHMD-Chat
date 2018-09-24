@@ -16,17 +16,25 @@ libopenhmd, liblua5.2, libopus-dev, openal-dev
 ```
 
 ### Road map
-- [x] Rendering
-  - [x] OBJ loader
-  - [x] Mesh rendering
-  - [x] Texture rendering
-  - [x] Camera
-- [x] VR (OpenHMD)
-  - [x] VR rendering
-  - [ 50% ] VR gui
-  - [x] VR controls
-  - [x] Distortion correction
-- [x] Assets downloading from URL
-- [x] Sync of player's position and rotation
-- [x] Voice Chat
-- [x] Full LUA api
+- [x] 0.3
+  - [x] Rendering
+    - [x] OBJ loader
+    - [x] Mesh rendering
+    - [x] Texture rendering
+    - [x] Camera
+  - [x] VR (OpenHMD)
+    - [x] VR rendering
+    - [ 50% ] VR gui
+    - [x] VR controls
+    - [x] Distortion correction
+  - [x] Sync of player's position and rotation
+  - [x] Voice Chat
+- [x] 0.4
+  - [x] Assets downloading from URL
+  - [x] Full LUA api
+  - [ ] Master server(Server list)
+  - [ ] Server LUA API to work with players(Change models, change positions, etc)
+  - [ ] New default spawn location
+  - [ ] Collision and raytracing
+  - [ ] Server side physic
+  - [ ] Default game modes
