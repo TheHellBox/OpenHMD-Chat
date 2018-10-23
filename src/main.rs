@@ -70,8 +70,6 @@ fn main() {
     println!("Running lua...");
     let mut scripting_eng = scripting_engine::ScriptingEngine::new();
     println!("Done!");
-    //Move it to lua side
-    let mut ui = ui::Ui::new(&window.display, window.scr_res);
     let gui_scale = (window.scr_res.0 as f32 / 20000.0, window.scr_res.1 as f32 / 20000.0);
 
     //Load models
@@ -89,14 +87,14 @@ fn main() {
     game.spawn_game_object(gui_go);
 
     loop{
-        if ui.active {
+        if window.ui.active {
             {
                 let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_plane").unwrap().model.meshes[0];
-                if let Some(tex) = ui.draw_into_texture(&window.display, window.scr_res){
+                if let Some(tex) = window.ui.draw_into_texture(&window.display, window.scr_res){
                     ui_renderer.texture = tex;
                 }
             }
-            ui.update(&mut window);
+            window.update_ui();
         }
         game.update(&mut net_rx, &mut net_tx, &mut window);
         scripting_eng.update(&mut game, &mut window);

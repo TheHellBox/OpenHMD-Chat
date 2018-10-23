@@ -21,7 +21,7 @@ libopenhmd, liblua5.2, libopus-dev, openal-dev
     - [x] OBJ loader
     - [x] Mesh rendering
     - [x] Texture rendering
-    - [x] Camera
+    - [x] Camera 
   - [x] VR (OpenHMD)
     - [x] VR rendering
     - [ 50% ] VR gui
@@ -35,6 +35,6 @@ libopenhmd, liblua5.2, libopus-dev, openal-dev
   - [ ] Master server(Server list)
   - [ ] Server LUA API to work with players(Change models, change positions, etc)
   - [ ] New default spawn location
-  - [ ] Collision and raytracing
+  - [ ] Collision and ray casting
   - [ ] Server side physic
   - [ ] Default game modes

@@ -9,6 +9,7 @@ use network::NetworkEvent;
 use nalgebra::{UnitQuaternion, Quaternion};
 use openhmd_rs;
 use nalgebra;
+use ui;
 
 pub mod default_shaders;
 pub mod ohmd_params;
@@ -51,7 +52,8 @@ pub struct Window{
     pub scr_res: (u32, u32),
     pub mouse_pos: (u32, u32),
     pub head_dir: UnitQuaternion<f32>,
-    pub events: Vec<Event>
+    pub events: Vec<Event>,
+    pub ui: ui::Ui
 }
 
 impl Window{
@@ -115,6 +117,8 @@ impl Window{
 
         let draw_areas = HashMap::with_capacity(128);
 
+        let mut ui = ui::Ui::new(&display, (x_size, y_size));
+
         Window{
             display,
             events_loop,
@@ -130,7 +134,8 @@ impl Window{
             scr_res: (x_size, y_size),
             mouse_pos: (0, 0),
             head_dir: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
-            events: vec![]
+            events: vec![],
+            ui
         }
     }
     pub fn is_vr(&self) -> bool{
