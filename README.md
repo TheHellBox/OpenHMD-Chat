@@ -21,10 +21,10 @@ libopenhmd, liblua5.2, libopus-dev, openal-dev
     - [x] OBJ loader
     - [x] Mesh rendering
     - [x] Texture rendering
-    - [x] Camera 
+    - [x] Camera
   - [x] VR (OpenHMD)
     - [x] VR rendering
-    - [ 50% ] VR gui
+    - [ 70% ] VR gui
     - [x] VR controls
     - [x] Distortion correction
   - [x] Sync of player's position and rotation
