@@ -13,7 +13,8 @@ pub struct Ui{
     pub renderer: conrod::backend::glium::Renderer,
     pub image_map: conrod::image::Map<glium::texture::Texture2d>,
     pub ids: Ids,
-    pub cursor_tex: conrod::image::Id
+    pub cursor_tex: conrod::image::Id,
+    pub active: bool
 }
 impl Ui{
     pub fn new(display: &Display, scr_res: (u32, u32)) -> Ui{
@@ -31,7 +32,8 @@ impl Ui{
             renderer,
             image_map,
             ids,
-            cursor_tex
+            cursor_tex,
+            active: false
         }
     }
     pub fn draw_into_texture(&mut self, display: &Display, res: (u32, u32)) -> Option<Texture2d>{

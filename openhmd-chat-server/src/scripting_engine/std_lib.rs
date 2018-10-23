@@ -1,3 +1,4 @@
+pub static LUA_STD_LIB_EVENTS: &'static str = r#"
 local _events = {}
 
 function AddEvent(name, eventname, fn)
@@ -14,3 +15,4 @@ function CallEvent(name, args)
     end
   end
 end
+"#;

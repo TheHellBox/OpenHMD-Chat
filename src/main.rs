@@ -89,15 +89,17 @@ fn main() {
     game.spawn_game_object(gui_go);
 
     loop{
-        {
-            let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_plane").unwrap().model.meshes[0];
-            if let Some(tex) = ui.draw_into_texture(&window.display, window.scr_res){
-                ui_renderer.texture = tex;
+        if ui.active {
+            {
+                let ui_renderer = &mut window.draw_buffer.objects.get_mut("ui_plane").unwrap().model.meshes[0];
+                if let Some(tex) = ui.draw_into_texture(&window.display, window.scr_res){
+                    ui_renderer.texture = tex;
+                }
             }
+            ui.update(&mut window);
         }
         game.update(&mut net_rx, &mut net_tx, &mut window);
         scripting_eng.update(&mut game, &mut window);
-        ui.update(&mut window);
         window.draw(&game);
         window.update();
         let channels = scripting_engine::LUA_CHANNL_OUT.0.lock().unwrap();

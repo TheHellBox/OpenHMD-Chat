@@ -1,6 +1,7 @@
+pub mod std_lib;
+
 use hlua;
 use std::fs;
-use hlua::{Lua, AnyLuaValue};
 use game::Game;
 use std::{thread};
 use std::fs::File;
@@ -8,6 +9,7 @@ use std::path::Path;
 use std::error::Error;
 use cobalt::MessageKind;
 use std::sync::{Arc, Mutex};
+use hlua::{Lua, AnyLuaValue};
 use network::{MessageType, MsgDst};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use game::gameobject::{GameObjectBuilder, GameObject};
@@ -81,7 +83,6 @@ implement_lua_push!(LuaEntity, |mut metatable| {
     ));
 });
 
-
 pub struct ScriptingEngine{
     tx: Sender<LuaLocalCommand>
 }
@@ -92,7 +93,11 @@ impl ScriptingEngine{
         let (tx, rx) = channel::<LuaLocalCommand>();
         thread::spawn(move || {
             let mut lua = Lua::new();
-            //init
+
+            // Open std libs
+
+            lua.execute::<()>(std_lib::LUA_STD_LIB_EVENTS).unwrap();
+
             lua.openlibs();
             {
                 let mut world = lua.empty_array("World");

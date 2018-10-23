@@ -1,3 +1,5 @@
+pub mod std_lib;
+
 use hlua;
 use std::fs;
 use hlua::{Lua, AnyLuaValue};
@@ -98,8 +100,12 @@ impl ScriptingEngine{
         let (tx, rx) = channel::<LuaLocalCommand>();
         thread::spawn(move || {
             let mut lua = Lua::new();
-            //init
+            // Open std libs
+
+            lua.execute::<()>(std_lib::LUA_STD_LIB_EVENTS).unwrap();
+
             lua.openlibs();
+
             lua.set("run_lua_file", hlua::function1(|path: String| {
                 let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                 let _ = channels.send(LuaEvent::RunLuaFile(path));
