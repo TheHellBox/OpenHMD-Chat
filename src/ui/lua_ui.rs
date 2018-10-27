@@ -4,7 +4,9 @@ use hlua::AnyLuaValue;
 use std::collections::HashMap;
 use scripting_engine::{LuaEvent, LUA_CHANNL_OUT};
 
+#[derive(Clone)]
 pub struct LuaRawButton{
+    pub id: u32,
     pub text: String,
     pub position:  (f64, f64),
     pub size:      (f64, f64),
@@ -14,6 +16,7 @@ pub struct LuaRawButton{
 impl LuaRawButton {
     pub fn new(text: String, position: (f64, f64), callback: String) -> LuaRawButton{
         LuaRawButton{
+            id: 0,
             text,
             position,
             size: (128.0, 128.0),
@@ -39,20 +42,30 @@ impl LuaUI {
             buttons: HashMap::new()
         }
     }
-    pub fn add_button(&mut self, button: LuaRawButton, id: u32){
-        self.buttons.insert(id, button);
+    pub fn add_button(&mut self, button: LuaRawButton){
+        self.buttons.insert(button.id, button);
     }
 }
 
-pub struct LuaButton{
-    pub id: u32
-}
-implement_lua_read!(LuaButton);
-implement_lua_push!(LuaButton, |mut metatable| {
+implement_lua_read!(LuaRawButton);
+implement_lua_push!(LuaRawButton, |mut metatable| {
     let mut index = metatable.empty_array("__index");
-    index.set("set_size", hlua::function3(|btn: &mut LuaButton, x: f64, y: f64|
+    index.set("SetSize", hlua::function3(|btn: &mut LuaRawButton, x: f64, y: f64|
     {
+        btn.size = (x, y);
         let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-        let _ = channels.send(LuaEvent::ChangeButtonSize(btn.id, (x, y)));
+        let _ = channels.send(LuaEvent::UpdateButton(btn.clone()));
+    } ));
+    index.set("SetPosition", hlua::function3(|btn: &mut LuaRawButton, x: f64, y: f64|
+    {
+        btn.position = (x, y);
+        let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+        let _ = channels.send(LuaEvent::UpdateButton(btn.clone()));
+    } ));
+    index.set("SetLabel", hlua::function2(|btn: &mut LuaRawButton, label: String|
+    {
+        btn.text = label;
+        let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+        let _ = channels.send(LuaEvent::UpdateButton(btn.clone()));
     } ));
 });

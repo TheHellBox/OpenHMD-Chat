@@ -77,9 +77,9 @@ impl render::Window{
         for (id, button) in &self.ui.lua_ui.buttons {
             let id = ids.next().unwrap();
             for _click in widget::Button::new()
+                .w_h(button.size.0, button.size.1)
                 .x_position(conrod::position::Position::Absolute(button.position.0 - self.scr_res.0 as f64 / 2.0))
                 .y_position(conrod::position::Position::Absolute(-(button.position.1 - self.scr_res.1 as f64 / 2.0)))
-                .w_h(button.size.0, button.size.1)
                 .label(&button.text)
                 .label_font_size(32)
                 .set(*id, ui_w)

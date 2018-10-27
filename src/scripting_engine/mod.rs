@@ -30,12 +30,12 @@ lazy_static! {
 
 pub enum LuaEvent{
     SetGameObjectPosition(String, (f32, f32, f32)),
-    ChangeButtonSize(u32, (f64, f64)),
+    UpdateButton(ui::lua_ui::LuaRawButton),
     CallEvent(String, Vec<AnyLuaValue>),
     SpawnGameObject(GameObject),
     GetGameObjectPosition(String),
     LoadModel(String, String),
-    AddButton(String, f64, f64, String, u32),
+    AddButton(ui::lua_ui::LuaRawButton),
     DownloadFile(String),
     RunLuaFile(String),
     RunLua(String),
@@ -148,11 +148,18 @@ impl ScriptingEngine{
             }
             {
                 let mut ui = lua.empty_array("Ui");
-                ui.set("add_button", hlua::function4(|label: String, pos_x: f64, pos_y: f64, callback: String| {
+                ui.set("AddButton", hlua::function4(|label: String, pos_x: f64, pos_y: f64, callback: String| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                     let id = support::random_number();
-                    let _ = channels.send(LuaEvent::AddButton(label, pos_x, pos_y, callback, id));
-                    ui::lua_ui::LuaButton{id}
+                    let button = ui::lua_ui::LuaRawButton{
+                        id,
+                        text: label,
+                        position: (pos_x, pos_y),
+                        size: (128.0, 128.0),
+                        callback
+                    };
+                    let _ = channels.send(LuaEvent::AddButton(button.clone()));
+                    button
                 } ));
             }
             let paths = fs::read_dir("./assets/lua/").unwrap();
@@ -190,7 +197,7 @@ impl ScriptingEngine{
                                 };
                             }
                             else{
-                                println!("Cannot call CallEvent function. Does events.lua properly loaded?");
+                                println!("Cannot call CallEvent function.");
                             }
                         }
                     }
@@ -290,12 +297,11 @@ impl ScriptingEngine{
                 LuaEvent::LoadModel(path, name) => {
                     let _ = window.load_model_and_push(path, name, (0.1, 0.1, 0.1));
                 },
-                LuaEvent::AddButton(label, pos_x, pos_y, callback, id) => {
-                    let button = ui::lua_ui::LuaRawButton::new(label, (pos_x, pos_y), callback);
-                    window.ui.lua_ui.add_button(button, id);
+                LuaEvent::AddButton(button) => {
+                    window.ui.lua_ui.add_button(button);
                 },
-                LuaEvent::ChangeButtonSize(id, size) => {
-                    window.ui.lua_ui.buttons.get_mut(&id).unwrap().set_size(size);
+                LuaEvent::UpdateButton(button) => {
+                    window.ui.lua_ui.buttons.insert(button.id, button);
                 },
                 _ => {}
             }
