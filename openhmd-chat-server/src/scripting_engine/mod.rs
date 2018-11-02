@@ -101,9 +101,9 @@ impl ScriptingEngine{
             lua.openlibs();
             {
                 let mut world = lua.empty_array("World");
-                world.set("create_game_object", hlua::function0(|| GameObjectBuilder::new() ));
-                world.set("get_game_object", hlua::function1(|name: String| LuaEntity{name} ));
-                world.set("get_all_objects", hlua::function0(|| {
+                world.set("CreateGameObject", hlua::function0(|| GameObjectBuilder::new() ));
+                world.set("GetGameObject", hlua::function1(|name: String| LuaEntity{name} ));
+                world.set("GetAllObjects", hlua::function0(|| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                     let _ = channels.send(LuaEvent::GetObjects());
                     let channels = LUA_CHANNL_IN.1.lock().unwrap();
