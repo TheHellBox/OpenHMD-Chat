@@ -4,6 +4,7 @@ use ui;
 use support;
 use hlua;
 use std::fs;
+use std::collections::HashMap;
 use hlua::{Lua, AnyLuaValue};
 use game::Game;
 use std::io::copy;
@@ -148,16 +149,10 @@ impl ScriptingEngine{
             }
             {
                 let mut ui = lua.empty_array("Ui");
-                ui.set("AddButton", hlua::function4(|label: String, pos_x: f64, pos_y: f64, callback: String| {
+                ui.set("AddButton", hlua::function2(|callback: String, args: Vec<AnyLuaValue>| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                     let id = support::random_number();
-                    let button = ui::lua_ui::LuaRawButton{
-                        id,
-                        text: label,
-                        position: (pos_x, pos_y),
-                        size: (128.0, 128.0),
-                        callback
-                    };
+                    let button = ui::lua_ui::LuaRawButton::new(callback, args);
                     let _ = channels.send(LuaEvent::AddButton(button.clone()));
                     button
                 } ));

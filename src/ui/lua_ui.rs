@@ -10,22 +10,24 @@ pub struct LuaRawButton{
     pub text: String,
     pub position:  (f64, f64),
     pub size:      (f64, f64),
-    pub callback: String
+    pub callback: String,
+    pub callback_args: Vec<AnyLuaValue>
 }
 
 impl LuaRawButton {
-    pub fn new(text: String, position: (f64, f64), callback: String) -> LuaRawButton{
+    pub fn new(callback: String, callback_args: Vec<AnyLuaValue>) -> LuaRawButton{
         LuaRawButton{
             id: 0,
-            text,
-            position,
+            text: "Button".to_string(),
+            position: (0.0, 0.0),
             size: (128.0, 128.0),
-            callback
+            callback,
+            callback_args: callback_args
         }
     }
     pub fn press(&self){
         let channels = scripting_engine::LUA_CHANNL_OUT.0.lock().unwrap();
-        let _ = channels.send(scripting_engine::LuaEvent::CallEvent(self.callback.clone(), vec![]));
+        let _ = channels.send(scripting_engine::LuaEvent::CallEvent(self.callback.clone(), self.callback_args.clone()));
     }
     pub fn set_size(&mut self, size: (f64, f64)){
         self.size = size;
@@ -65,6 +67,12 @@ implement_lua_push!(LuaRawButton, |mut metatable| {
     index.set("SetLabel", hlua::function2(|btn: &mut LuaRawButton, label: String|
     {
         btn.text = label;
+        let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+        let _ = channels.send(LuaEvent::UpdateButton(btn.clone()));
+    } ));
+    index.set("ChangeCallback", hlua::function2(|btn: &mut LuaRawButton, callback: String|
+    {
+        btn.callback = callback;
         let channels = LUA_CHANNL_OUT.0.lock().unwrap();
         let _ = channels.send(LuaEvent::UpdateButton(btn.clone()));
     } ));
