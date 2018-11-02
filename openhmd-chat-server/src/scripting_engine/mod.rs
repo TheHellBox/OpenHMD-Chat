@@ -122,7 +122,7 @@ impl ScriptingEngine{
             }
             {
                 let mut network = lua.empty_array("Network");
-                network.set("send_lua", hlua::function2(|script: String, id: u32|{
+                network.set("SendLua", hlua::function2(|script: String, id: u32|{
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                     let _ = channels.send(LuaEvent::SendLua(script, id));
                 }));
