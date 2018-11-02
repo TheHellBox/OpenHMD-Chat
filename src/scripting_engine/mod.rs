@@ -37,7 +37,7 @@ pub enum LuaEvent{
     GetGameObjectPosition(String),
     LoadModel(String, String),
     AddButton(ui::lua_ui::LuaRawButton),
-    DownloadFile(String),
+    DownloadFile(String, String),
     RunLuaFile(String),
     RunLua(String),
     GetObjects()
@@ -117,13 +117,13 @@ impl ScriptingEngine{
             } ));
             {
                 let mut world = lua.empty_array("World");
-                world.set("create_game_object", hlua::function0(|| GameObjectBuilder::new() ));
-                world.set("load_model", hlua::function2(|path: String, name: String|{
+                world.set("CreateGameObject", hlua::function0(|| GameObjectBuilder::new() ));
+                world.set("LoadModel", hlua::function2(|path: String, name: String|{
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                     let _ = channels.send(LuaEvent::LoadModel(path, name));
                 }));
-                world.set("get_game_object", hlua::function1(|name: String| LuaEntity{name} ));
-                world.set("get_all_objects", hlua::function0(|| {
+                world.set("GetGameObject", hlua::function1(|name: String| LuaEntity{name} ));
+                world.set("GetAllObjects", hlua::function0(|| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                     let _ = channels.send(LuaEvent::GetObjects());
                     let channels = LUA_CHANNL_IN.1.lock().unwrap();
@@ -142,9 +142,9 @@ impl ScriptingEngine{
             }
             {
                 let mut network = lua.empty_array("Network");
-                network.set("download_file", hlua::function1(|url: String| {
+                network.set("DownloadFile", hlua::function2(|url: String, file_path: String| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                    let _ = channels.send(LuaEvent::DownloadFile(url));
+                    let _ = channels.send(LuaEvent::DownloadFile(url, file_path));
                 } ));
             }
             {
@@ -242,7 +242,7 @@ impl ScriptingEngine{
                 LuaEvent::RunLuaFile(path) => {
                     let _ = self.tx.send(LuaLocalCommand::RunLuaFile(path));
                 }
-                LuaEvent::DownloadFile(url) => {
+                LuaEvent::DownloadFile(url, file_path) => {
                     let mut response = reqwest::get(&url).unwrap();
                     let mut dest = {
                         let fname = Path::new(response
@@ -252,32 +252,16 @@ impl ScriptingEngine{
                             .and_then(|name| if name.is_empty() { None } else { Some(name) })
                             .unwrap_or("tmp.bin"));
                         let extension = fname.extension().unwrap().to_str().unwrap();
-                        let dir = match extension{
-                            "obj" => {
-                                Some(Path::new("models/"))
-                            },
-                            "mtl" => {
-                                Some(Path::new("models/"))
-                            },
-                            "png" => {
-                                Some(Path::new("textures/"))
-                            },
-                            "jpg" => {
-                                Some(Path::new("textures/"))
-                            },
-                            "lua" => {
-                                Some(Path::new("temp/"))
-                            },
-                            _ => {
-                                None
-                            }
-                        };
-                        match dir{
-                            Some(dir) => {
-                                let mut path = Path::new("./assets/").join(dir);
+
+                        let valid_extensions = ["obj", "mtl", "png", "jpg", "lua"];
+                        let valid = valid_extensions.contains(&extension);
+                        match valid{
+                            true => {
+                                let mut path = Path::new("./assets/server_downloads/").join(file_path);
+                                fs::create_dir_all(&path);
                                 Some(File::create(path.join(fname)).unwrap())
-                            }
-                            None => {
+                            },
+                            false => {
                                 None
                             }
                         }

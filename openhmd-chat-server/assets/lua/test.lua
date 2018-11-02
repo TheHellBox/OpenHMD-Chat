@@ -6,6 +6,6 @@ print(ent:name())
 
 
 AddEvent("OnClientConnected", "preload_models", function(id)
-  script = "World.load_model('./assets/models/scene/scene.obj', 'scene_01')"
+script = "Network.DownloadFile('https://46.img.avito.st/640x480/4923397646.jpg', 'myfiles/hey/test/') ";
   Network.send_lua(script, id)
 end)
