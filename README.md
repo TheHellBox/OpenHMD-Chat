@@ -33,7 +33,7 @@ libopenhmd, liblua5.2, libopus-dev, openal-dev
   - [x] Assets downloading from URL
   - [x] Full LUA api
   - [ ] Master server(Server list)
-  - [ ] Server LUA API to work with players(Change models, change positions, etc)
+  - [x] Server LUA API to work with players(Change models, change positions, etc)
   - [ ] New default spawn location
   - [ ] Collision and ray casting
   - [ ] Server side physic
