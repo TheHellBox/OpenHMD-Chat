@@ -117,6 +117,7 @@ impl GameObjectBuilder{
 }
 
 implement_lua_push!(GameObjectBuilder, |mut metatable| {
+    use game::GameCommand;
     let mut index = metatable.empty_array("__index");
     index.set("with_position", hlua::function4(|go_builder: &mut GameObjectBuilder, x: f32, y: f32, z: f32| go_builder.position = Point3::new(x, y, z) ));
     index.set("with_model", hlua::function2(|go_builder: &mut GameObjectBuilder, name: String| go_builder.render_object = name ));
@@ -128,7 +129,7 @@ implement_lua_push!(GameObjectBuilder, |mut metatable| {
         let game_object = go_builder.clone().build();
         let name = game_object.name.clone();
         let channels = scripting_engine::LUA_CHANNL_OUT.0.lock().unwrap();
-        let _ = channels.send(scripting_engine::LuaEvent::SpawnGameObject(game_object));
+        let _ = channels.send(GameCommand::SpawnGameObject(game_object));
         scripting_engine::LuaEntity{
             name
         }

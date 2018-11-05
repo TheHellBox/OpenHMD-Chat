@@ -6,6 +6,8 @@ use game::Game;
 use std::{thread};
 use std::fs::File;
 use std::path::Path;
+use nalgebra::Point3;
+use game::{player::LuaPlayer, GameCommand};
 use std::error::Error;
 use cobalt::MessageKind;
 use std::sync::{Arc, Mutex};
@@ -15,23 +17,14 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use game::gameobject::{GameObjectBuilder, GameObject};
 
 lazy_static! {
-    pub static ref LUA_CHANNL_OUT: (Arc<Mutex<Sender<LuaEvent>>>, Arc<Mutex<Receiver<LuaEvent>>>) = {
-        let channels = channel::<LuaEvent>();
+    pub static ref LUA_CHANNL_OUT: (Arc<Mutex<Sender<GameCommand>>>, Arc<Mutex<Receiver<GameCommand>>>) = {
+        let channels = channel::<GameCommand>();
         (Arc::new(Mutex::new(channels.0)), Arc::new(Mutex::new(channels.1)) )
     };
     pub static ref LUA_CHANNL_IN: (Arc<Mutex<Sender<LuaCommand>>>, Arc<Mutex<Receiver<LuaCommand>>>) = {
         let channels = channel::<LuaCommand>();
         (Arc::new(Mutex::new(channels.0)), Arc::new(Mutex::new(channels.1)) )
     };
-}
-
-pub enum LuaEvent{
-    SetGameObjectPosition(String, (f32, f32, f32)),
-    CallEvent(String, Vec<AnyLuaValue>),
-    SpawnGameObject(GameObject),
-    GetGameObjectPosition(String),
-    SendLua(String, u32),
-    GetObjects()
 }
 
 pub enum LuaCommand{
@@ -47,13 +40,14 @@ pub struct LuaEntity{
     pub name: String
 }
 
+
 implement_lua_read!(LuaEntity);
 implement_lua_push!(LuaEntity, |mut metatable| {
     let mut index = metatable.empty_array("__index");
     index.set("set_position", hlua::function4(|ent: &mut LuaEntity, x: f32, y: f32, z: f32|
         {
             let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-            let _ = channels.send(LuaEvent::SetGameObjectPosition(ent.name.clone(), (x, y, z)));
+            let _ = channels.send(GameCommand::SetGameObjectPosition(ent.name.clone(), Point3::new(x, y, z)));
         }
     ));
     index.set("name", hlua::function1(|ent: &mut LuaEntity|
@@ -61,8 +55,10 @@ implement_lua_push!(LuaEntity, |mut metatable| {
     ));
     index.set("get_position", hlua::function1(|ent: &mut LuaEntity|
         {
-            let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-            let _ = channels.send(LuaEvent::GetGameObjectPosition(ent.name.clone()));
+            {
+                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                let _ = channels.send(GameCommand::GetGameObjectPosition(ent.name.clone()));
+            }
             let channels = LUA_CHANNL_IN.1.lock().unwrap();
             let data = channels.recv();
             if data.is_ok(){
@@ -105,7 +101,7 @@ impl ScriptingEngine{
                 world.set("GetGameObject", hlua::function1(|name: String| LuaEntity{name} ));
                 world.set("GetAllObjects", hlua::function0(|| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                    let _ = channels.send(LuaEvent::GetObjects());
+                    let _ = channels.send(GameCommand::GetObjects());
                     let channels = LUA_CHANNL_IN.1.lock().unwrap();
                     let data = channels.recv();
                     if data.is_ok(){
@@ -124,7 +120,13 @@ impl ScriptingEngine{
                 let mut network = lua.empty_array("Network");
                 network.set("SendLua", hlua::function2(|script: String, id: u32|{
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                    let _ = channels.send(LuaEvent::SendLua(script, id));
+                    let _ = channels.send(GameCommand::SendLua(script, id));
+                }));
+            }
+            {
+                let mut player = lua.empty_array("Player");
+                player.set("GetByID", hlua::function1(|id: u32|{
+                    LuaPlayer{id}
                 }));
             }
             let paths = fs::read_dir("./assets/lua/").unwrap();
@@ -163,25 +165,24 @@ impl ScriptingEngine{
         }
     }
     pub fn update(&mut self, game: &mut Game, net_tx: &mut Sender<(MessageKind, MessageType, MsgDst)>){
-        use nalgebra::Point3;
         let channels = LUA_CHANNL_OUT.1.lock().unwrap();
         let data = channels.try_iter();
         for x in data{
             match x{
-                LuaEvent::SpawnGameObject(game_object) => {
-                    net_tx.send((MessageKind::Reliable, MessageType::CreateGameObject(game_object.name.clone()), MsgDst::Boardcast()));
-                    net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedPosition(game_object.name.clone(), game_object.position), MsgDst::Boardcast()));
-                    net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedRotation(game_object.name.clone(), game_object.rotation), MsgDst::Boardcast()));
-                    net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedModel(game_object.name.clone(), game_object.render_object.clone()), MsgDst::Boardcast()));
+                GameCommand::SpawnGameObject(game_object) => {
+                    net_tx.send((MessageKind::Ordered, MessageType::CreateGameObject(game_object.name.clone()), MsgDst::Boardcast()));
+                    net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedPosition(game_object.name.clone(), game_object.position), MsgDst::Boardcast()));
+                    net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedRotation(game_object.name.clone(), game_object.rotation), MsgDst::Boardcast()));
+                    net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedModel(game_object.name.clone(), game_object.render_object.clone()), MsgDst::Boardcast()));
                     game.spawn_game_object(game_object);
                 },
-                LuaEvent::SetGameObjectPosition(name, pos) => {
+                GameCommand::SetGameObjectPosition(name, pos) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
-                        x.set_position(Point3::new(pos.0, pos.1, pos.2))
+                        x.set_position(pos)
                     }
-                    net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name, Point3::new(pos.0, pos.1, pos.2)), MsgDst::Boardcast()));
+                    net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name, pos), MsgDst::Boardcast()));
                 },
-                LuaEvent::GetGameObjectPosition(name) => {
+                GameCommand::GetGameObjectPosition(name) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
                         let channels = LUA_CHANNL_IN.0.lock().unwrap();
                         let _ = channels.send(LuaCommand::GetGameObjectPosition(vec![x.position[0], x.position[1], x.position[2]]));
@@ -191,13 +192,13 @@ impl ScriptingEngine{
                         let _ = channels.send(LuaCommand::GetGameObjectPosition(vec![0.0, 0.0, 0.0]));
                     }
                 },
-                LuaEvent::SendLua(script, id) => {
+                GameCommand::SendLua(script, id) => {
                     net_tx.send((MessageKind::Reliable, MessageType::LuaScript(script), MsgDst::Id(id)));
                 },
-                LuaEvent::CallEvent(name, args) => {
+                GameCommand::CallEvent(name, args) => {
                     let _ = self.tx.send(LuaLocalCommand::CallEvent(name, args));
                 },
-                LuaEvent::GetObjects() => {
+                GameCommand::GetObjects() => {
                     let mut objects = vec![];
                     for (name, x) in &game.gameobjects{
                         objects.push(LuaEntity{name: name.clone()});
@@ -205,7 +206,9 @@ impl ScriptingEngine{
                     let channels = LUA_CHANNL_IN.0.lock().unwrap();
                     let _ = channels.send(LuaCommand::GetObjects(objects));
                 },
-                _ => {}
+                _ => {
+
+                }
             }
         }
     }

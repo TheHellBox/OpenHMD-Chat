@@ -3,7 +3,9 @@ use std::sync::mpsc::{Sender, Receiver};
 use bincode::{serialize, deserialize};
 use std::sync::mpsc::channel;
 use hlua::AnyLuaValue;
-use scripting_engine::{LUA_CHANNL_OUT, LuaEvent};
+use scripting_engine::{LUA_CHANNL_OUT};
+// New Rust syntax
+use game::{gameobject::{GameObject, GameObjectBuilder}, GameCommand};
 use nalgebra::{Translation3, Point3, UnitQuaternion};
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
@@ -19,7 +21,8 @@ pub enum NetworkEvent{
 }
 
 pub enum NetworkCommand{
-    SendGameObjects(u32)
+    SendGameObjects(u32),
+    GameCommand(GameCommand),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -109,9 +112,11 @@ impl Network {
                                 }
                             },
                             NetworkEvent::SendPosition(position) => {
+                                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                                channels.send( GameCommand::SetGameObjectPosition(format!("player{}", id_u32), position) );
                                 for (_, conn) in self.server.connections() {
                                     if conn.id() != id{
-                                        let msg = MessageType::GameObjectChangedPosition(format!{"player{}", id_u32}, position);
+                                        let msg = MessageType::GameObjectChangedPosition(format!("player{}", id_u32), position);
                                         conn.send(MessageKind::Instant, serialize(&msg).unwrap());
                                     }
                                 }
@@ -119,7 +124,7 @@ impl Network {
                             NetworkEvent::SendRotation(rotation) => {
                                 for (_, conn) in self.server.connections() {
                                     if conn.id() != id{
-                                        let msg = MessageType::GameObjectChangedRotation(format!{"player{}", id_u32}, rotation);
+                                        let msg = MessageType::GameObjectChangedRotation(format!("player{}", id_u32), rotation);
                                         conn.send(MessageKind::Instant, serialize(&msg).unwrap());
                                     }
                                 }
@@ -128,8 +133,13 @@ impl Network {
                         }
                     },
                     ServerEvent::Connection(id) => {
-
                         let ConnectionID(id_u32) = id;
+                        {
+                            let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                            let game_object = GameObjectBuilder::new().with_name(format!{"player{}", id_u32}).build();
+                            let _ = channels.send(GameCommand::SpawnGameObject(game_object));
+                            let _ = channels.send(GameCommand::CallEvent("OnClientConnected".to_string(), vec![AnyLuaValue::LuaNumber(id_u32 as f64)]));
+                        }
                         self.server_info.players.push(id_u32);
                         println!("player{} has been connected", id_u32);
                         for (_, conn) in self.server.connections() {
@@ -146,8 +156,6 @@ impl Network {
                                 conn.send(MessageKind::Reliable, server_info);
                             }
                         }
-                        let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                        let _ = channels.send(LuaEvent::CallEvent("OnClientConnected".to_string(), vec![AnyLuaValue::LuaNumber(id_u32 as f64)]));
                     },
                     ServerEvent::ConnectionLost(id, _) => {
                         let ConnectionID(player_id) = id;
