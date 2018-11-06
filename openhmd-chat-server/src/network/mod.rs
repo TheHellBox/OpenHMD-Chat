@@ -122,6 +122,8 @@ impl Network {
                                 }
                             },
                             NetworkEvent::SendRotation(rotation) => {
+                                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                                channels.send( GameCommand::SetGameObjectRotation(format!("player{}", id_u32), rotation) );
                                 for (_, conn) in self.server.connections() {
                                     if conn.id() != id{
                                         let msg = MessageType::GameObjectChangedRotation(format!("player{}", id_u32), rotation);

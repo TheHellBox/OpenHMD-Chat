@@ -11,6 +11,7 @@ pub fn random_number() -> u32{
     let mut rng = thread_rng();
     rng.gen_range(0, 999999)
 }
+
 pub fn rand_translation(range_x_z: (f32, f32), range_y: (f32, f32)) -> Translation3<f32> {
     let mut rng = thread_rng();
     let x = rng.gen_range(range_x_z.0, range_x_z.1);

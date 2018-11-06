@@ -2,9 +2,14 @@ use opus;
 use scripting_engine::{LUA_CHANNL_OUT, LuaEvent};
 use std::{thread, time};
 use audio::AudioEvent;
+use std::sync::{Mutex};
 use nalgebra::{Point3, UnitQuaternion};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use bincode::{deserialize, serialize};
+
+lazy_static! {
+    pub static ref CONNECTON_ID: Mutex<u32> = Mutex::new(0);
+}
 
 #[derive(Serialize, Deserialize)]
 pub enum NetworkEvent{
@@ -48,7 +53,7 @@ pub struct ServerInfo{
 
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
-    Client, ClientEvent
+    Client, ClientEvent, ConnectionID
 };
 
 pub struct Network{
@@ -82,6 +87,10 @@ impl Network {
 
     pub fn connect(&mut self, addr: String){
         self.client.connect(addr).expect("Failed to bind to socket.");
+        if let Ok(conn) = self.client.connection() {
+            let ConnectionID(id_u32) = conn.id();
+            *CONNECTON_ID.lock().unwrap() = id_u32;
+        }
     }
 
     pub fn init(&mut self, tx_audio: Sender<AudioEvent>){
@@ -105,7 +114,7 @@ impl Network {
                             },
                             MessageType::PlayerConnected(id) => {
                                 let _ = tx_audio.send(AudioEvent::AddSource(format!("player{}", id).to_string()));
-                                let _ = self.tx_out.send(NetworkCommand::CreatePlayerGameobject(id));
+                                //let _ = self.tx_out.send(NetworkCommand::CreatePlayerGameobject(id));
                                 let _ = self.tx_out.send(NetworkCommand::SendPlayerInfo());
                             },
                             MessageType::PlayerDisconnected(id) => {

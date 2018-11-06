@@ -6,7 +6,7 @@ use game::Game;
 use std::{thread};
 use std::fs::File;
 use std::path::Path;
-use nalgebra::Point3;
+use nalgebra::{Point3, UnitQuaternion, Vector3};
 use game::{player::LuaPlayer, GameCommand};
 use std::error::Error;
 use cobalt::MessageKind;
@@ -28,7 +28,7 @@ lazy_static! {
 }
 
 pub enum LuaCommand{
-    GetGameObjectPosition(Vec<f32>),
+    ReturnVec(Vec<f32>),
     GetObjects(Vec<LuaEntity>),
 }
 
@@ -40,41 +40,70 @@ pub struct LuaEntity{
     pub name: String
 }
 
+pub fn get_game_value(game_cmd: GameCommand) -> Vec<f32>{
+    {
+        let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+        let _ = channels.send(game_cmd);
+    }
+    let channels = LUA_CHANNL_IN.1.lock().unwrap();
+    let data = channels.recv();
+    if data.is_ok(){
+        let data = data.unwrap();
+        match data{
+            LuaCommand::ReturnVec(pos) => {
+                pos
+            }
+            _ => {
+                vec![0.0, 0.0, 0.0]
+            }
+        }
+    }
+    else{
+        vec![0.0, 0.0, 0.0]
+    }
+}
 
 implement_lua_read!(LuaEntity);
 implement_lua_push!(LuaEntity, |mut metatable| {
     let mut index = metatable.empty_array("__index");
-    index.set("set_position", hlua::function4(|ent: &mut LuaEntity, x: f32, y: f32, z: f32|
+    index.set("SetPosition", hlua::function4(|ent: &mut LuaEntity, x: f32, y: f32, z: f32|
         {
             let channels = LUA_CHANNL_OUT.0.lock().unwrap();
             let _ = channels.send(GameCommand::SetGameObjectPosition(ent.name.clone(), Point3::new(x, y, z)));
         }
     ));
-    index.set("name", hlua::function1(|ent: &mut LuaEntity|
+    index.set("SetRotation", hlua::function4(|ent: &mut LuaEntity, x: f32, y: f32, z: f32|
+        {
+            let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+            let _ = channels.send(GameCommand::SetGameObjectRotation(ent.name.clone(), UnitQuaternion::from_euler_angles(x, y, z)));
+        }
+    ));
+    index.set("LookAt", hlua::function4(|ent: &mut LuaEntity, x: f32, y: f32, z: f32|
+        {
+            let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+            let _ = channels.send(GameCommand::SetGameObjectRotation(ent.name.clone(), UnitQuaternion::look_at_rh(&Vector3::new(x, y, z), &Vector3::y())));
+        }
+    ));
+    index.set("Direction", hlua::function4(|ent: &mut LuaEntity, x: f32, y: f32, z: f32|
+        {
+            use support::direction;
+            let rot = get_game_value(GameCommand::GetGameObjectRotation(ent.name.clone()));
+            let rot = UnitQuaternion::from_euler_angles(rot[0], rot[1], rot[2]);
+            let dir = direction(rot, Vector3::new(x, y, z));
+            vec![dir[0], dir[1], dir[2]]
+        }
+    ));
+    index.set("Name", hlua::function1(|ent: &mut LuaEntity|
         ent.name.clone()
     ));
-    index.set("get_position", hlua::function1(|ent: &mut LuaEntity|
+    index.set("GetPosition", hlua::function1(|ent: &mut LuaEntity|
         {
-            {
-                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                let _ = channels.send(GameCommand::GetGameObjectPosition(ent.name.clone()));
-            }
-            let channels = LUA_CHANNL_IN.1.lock().unwrap();
-            let data = channels.recv();
-            if data.is_ok(){
-                let data = data.unwrap();
-                match data{
-                    LuaCommand::GetGameObjectPosition(pos) => {
-                        pos
-                    }
-                    _ => {
-                        vec![0.0, 0.0, 0.0]
-                    }
-                }
-            }
-            else{
-                vec![0.0, 0.0, 0.0]
-            }
+            get_game_value(GameCommand::GetGameObjectPosition(ent.name.clone()))
+        }
+    ));
+    index.set("GetRotation", hlua::function1(|ent: &mut LuaEntity|
+        {
+            get_game_value(GameCommand::GetGameObjectRotation(ent.name.clone()))
         }
     ));
 });
@@ -182,14 +211,31 @@ impl ScriptingEngine{
                     }
                     net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name, pos), MsgDst::Boardcast()));
                 },
+                GameCommand::SetGameObjectRotation(name, rot) => {
+                    if let Some(x) = game.gameobjects.get_mut(&name){
+                        x.set_rotation_unit(rot)
+                    }
+                    net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedRotation(name, rot), MsgDst::Boardcast()));
+                },
                 GameCommand::GetGameObjectPosition(name) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
                         let channels = LUA_CHANNL_IN.0.lock().unwrap();
-                        let _ = channels.send(LuaCommand::GetGameObjectPosition(vec![x.position[0], x.position[1], x.position[2]]));
+                        let _ = channels.send(LuaCommand::ReturnVec(vec![x.position[0], x.position[1], x.position[2]]));
                     }
                     else{
                         let channels = LUA_CHANNL_IN.0.lock().unwrap();
-                        let _ = channels.send(LuaCommand::GetGameObjectPosition(vec![0.0, 0.0, 0.0]));
+                        let _ = channels.send(LuaCommand::ReturnVec(vec![0.0, 0.0, 0.0]));
+                    }
+                },
+                GameCommand::GetGameObjectRotation(name) => {
+                    if let Some(x) = game.gameobjects.get_mut(&name){
+                        let channels = LUA_CHANNL_IN.0.lock().unwrap();
+                        let rotation = x.rotation.to_euler_angles();
+                        let _ = channels.send(LuaCommand::ReturnVec(vec![rotation.0, rotation.1, rotation.2]));
+                    }
+                    else{
+                        let channels = LUA_CHANNL_IN.0.lock().unwrap();
+                        let _ = channels.send(LuaCommand::ReturnVec(vec![0.0, 0.0, 0.0]));
                     }
                 },
                 GameCommand::SendLua(script, id) => {

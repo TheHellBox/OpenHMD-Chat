@@ -8,6 +8,7 @@ cobalt="*"
 serde="1.0"
 serde_derive = "1.0"
 bincode="1.0"
+alga="0.6"
 nalgebra={ version = "0.15", features = ["serde-serialize"] }
 hlua="0.4"
 rand="*"
