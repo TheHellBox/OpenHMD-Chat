@@ -1,4 +1,6 @@
-use nalgebra::geometry::{Point3, UnitQuaternion, Quaternion};
+use nalgebra::{Point3, UnitQuaternion, Quaternion, Vector3};
+use nphysics3d::object::{BodyHandle, BodyPartMut};
+use nphysics3d::world::World;
 use scripting_engine;
 use support;
 use hlua;
@@ -7,7 +9,7 @@ use hlua;
 pub struct GameObject{
     pub name: String,
     pub render_object: String,
-    pub physic_body: u32,
+    pub physic_body: Option<BodyHandle>,
     pub position: Point3<f32>,
     pub rotation: UnitQuaternion<f32>,
     pub scale: (f32, f32, f32)
@@ -18,7 +20,7 @@ impl GameObject{
         GameObject{
             name,
             render_object: "none".to_string(),
-            physic_body: 0,
+            physic_body: None,
             position: Point3::new(0.0, 0.0, 0.0),
             rotation: UnitQuaternion::from_quaternion(Quaternion::new(0.707, 0.0, 0.707, 0.0)),
             scale: (0.1, 0.1, 0.1)
@@ -27,10 +29,24 @@ impl GameObject{
     pub fn set_render_object(&mut self, name: String){
         self.render_object = name;
     }
-    pub fn set_physic_body(&mut self, id: u32){
-        self.physic_body = id;
+    pub fn set_physic_body(&mut self, handle: BodyHandle){
+        self.physic_body = Some(handle);
     }
     pub fn set_position(&mut self, pos: Point3<f32>){
+        self.position = pos;
+    }
+    pub fn set_position_physic(&mut self, pos: Point3<f32>, world: &mut World<f32>){
+        use nalgebra::{Isometry3};
+        use nalgebra;
+        if let Some(physic_body) = self.physic_body{
+            let body_part = world.body_part_mut(physic_body);
+            match body_part{
+                BodyPartMut::RigidBody(body) => {
+                    body.set_position(Isometry3::new(Vector3::new(pos[0], pos[1], pos[2]), nalgebra::zero()))
+                },
+                _ => {}
+            }
+        }
         self.position = pos;
     }
     pub fn set_rotation(&mut self, rot: Quaternion<f32>){
@@ -47,18 +63,20 @@ pub struct GameObjectBuilder{
     pub render_object: String,
     pub physic_body: u32,
     pub position: Point3<f32>,
-    pub rotation: UnitQuaternion<f32>
+    pub rotation: UnitQuaternion<f32>,
+    pub scale: (f32, f32, f32)
 }
 implement_lua_read!(GameObjectBuilder);
 
 impl GameObjectBuilder{
     pub fn new() -> GameObjectBuilder{
         GameObjectBuilder{
-            name: "none".to_string(),
+            name: support::rand_string(10),
             render_object: "none".to_string(),
             physic_body: 0,
             position: Point3::new(0.0, 0.0, 0.0),
             rotation: UnitQuaternion::from_euler_angles(0.0, 0.0, 0.0),
+            scale: (0.1, 0.1, 0.1)
         }
     }
     pub fn with_name(self, name: String) -> Self{
@@ -70,6 +88,12 @@ impl GameObjectBuilder{
     pub fn with_position(self, position: Point3<f32>) -> Self{
         GameObjectBuilder{
             position,
+            ..self
+        }
+    }
+    pub fn with_scale(self, scale: (f32, f32, f32)) -> Self{
+        GameObjectBuilder{
+            scale,
             ..self
         }
     }
@@ -99,19 +123,13 @@ impl GameObjectBuilder{
         }
     }
     pub fn build(self) -> GameObject{
-        let name = if self.name != "none".to_string(){
-            self.name
-        }
-        else{
-            support::rand_string(10)
-        };
         GameObject{
-            name: name,
+            name: self.name,
             render_object: self.render_object,
-            physic_body: self.physic_body,
+            physic_body: None,
             position: self.position,
             rotation: self.rotation,
-            scale: (0.1, 0.1, 0.1)
+            scale: self.scale
         }
     }
 }
@@ -120,6 +138,7 @@ implement_lua_push!(GameObjectBuilder, |mut metatable| {
     use game::GameCommand;
     let mut index = metatable.empty_array("__index");
     index.set("with_position", hlua::function4(|go_builder: &mut GameObjectBuilder, x: f32, y: f32, z: f32| go_builder.position = Point3::new(x, y, z) ));
+    index.set("with_scale", hlua::function4(|go_builder: &mut GameObjectBuilder, x: f32, y: f32, z: f32| go_builder.scale = (x, y, z) ));
     index.set("with_model", hlua::function2(|go_builder: &mut GameObjectBuilder, name: String| go_builder.render_object = name ));
     index.set("with_name", hlua::function2(|go_builder: &mut GameObjectBuilder, name: String| go_builder.name = name ));
     index.set("with_rotation", hlua::function5(|go_builder: &mut GameObjectBuilder, x: f32, y: f32, z: f32, w: f32|

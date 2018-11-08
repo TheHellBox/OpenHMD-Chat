@@ -6,15 +6,16 @@ use game::Game;
 use std::{thread};
 use std::fs::File;
 use std::path::Path;
-use nalgebra::{Point3, UnitQuaternion, Vector3};
-use game::{player::LuaPlayer, GameCommand};
 use std::error::Error;
 use cobalt::MessageKind;
 use std::sync::{Arc, Mutex};
 use hlua::{Lua, AnyLuaValue};
 use network::{MessageType, MsgDst};
+use nphysics3d::object::{BodyHandle, Material};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use game::gameobject::{GameObjectBuilder, GameObject};
+use nalgebra::{Point3, UnitQuaternion, Vector3, Isometry3};
+use game::{player::LuaPlayer, GameCommand, collider_builder::{ColliderBuilder, LuaCollider}};
 
 lazy_static! {
     pub static ref LUA_CHANNL_OUT: (Arc<Mutex<Sender<GameCommand>>>, Arc<Mutex<Receiver<GameCommand>>>) = {
@@ -29,6 +30,7 @@ lazy_static! {
 
 pub enum LuaCommand{
     ReturnVec(Vec<f32>),
+    ReturnRBhandler(BodyHandle),
     GetObjects(Vec<LuaEntity>),
 }
 
@@ -96,6 +98,12 @@ implement_lua_push!(LuaEntity, |mut metatable| {
     index.set("Name", hlua::function1(|ent: &mut LuaEntity|
         ent.name.clone()
     ));
+    index.set("Remove", hlua::function1(|ent: &mut LuaEntity|
+        {
+            let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+            let _ = channels.send(GameCommand::RemoveGameObject(ent.name.clone()));
+        }
+    ));
     index.set("GetPosition", hlua::function1(|ent: &mut LuaEntity|
         {
             get_game_value(GameCommand::GetGameObjectPosition(ent.name.clone()))
@@ -104,6 +112,12 @@ implement_lua_push!(LuaEntity, |mut metatable| {
     index.set("GetRotation", hlua::function1(|ent: &mut LuaEntity|
         {
             get_game_value(GameCommand::GetGameObjectRotation(ent.name.clone()))
+        }
+    ));
+    index.set("AttachCollider", hlua::function2(|ent: &mut LuaEntity, collider: &mut LuaCollider|
+        {
+            let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+            let _ = channels.send(GameCommand::AttachCollider(ent.name.clone(), collider.clone()));
         }
     ));
 });
@@ -127,6 +141,7 @@ impl ScriptingEngine{
             {
                 let mut world = lua.empty_array("World");
                 world.set("CreateGameObject", hlua::function0(|| GameObjectBuilder::new() ));
+                world.set("CreateCollider", hlua::function0(|| ColliderBuilder::new() ));
                 world.set("GetGameObject", hlua::function1(|name: String| LuaEntity{name} ));
                 world.set("GetAllObjects", hlua::function0(|| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
@@ -203,11 +218,12 @@ impl ScriptingEngine{
                     net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedPosition(game_object.name.clone(), game_object.position), MsgDst::Boardcast()));
                     net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedRotation(game_object.name.clone(), game_object.rotation), MsgDst::Boardcast()));
                     net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedModel(game_object.name.clone(), game_object.render_object.clone()), MsgDst::Boardcast()));
+                    net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedScale(game_object.name.clone(), game_object.scale), MsgDst::Boardcast()));
                     game.spawn_game_object(game_object);
                 },
                 GameCommand::SetGameObjectPosition(name, pos) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
-                        x.set_position(pos)
+                        x.set_position_physic(pos, &mut game.physic_world)
                     }
                     net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name, pos), MsgDst::Boardcast()));
                 },
@@ -243,6 +259,38 @@ impl ScriptingEngine{
                 },
                 GameCommand::CallEvent(name, args) => {
                     let _ = self.tx.send(LuaLocalCommand::CallEvent(name, args));
+                },
+                GameCommand::RemoveGameObject(name) => {
+                    game.remove_game_object(name);
+                },
+                GameCommand::AttachCollider(name, collider) => {
+                    if let Some(ent) = game.gameobjects.get_mut(&name){
+                        if let Some(handle) = collider.handle{
+                            ent.set_physic_body(handle);
+                        }
+                    }
+                },
+                GameCommand::CreateRigidBody(geom, is_static) =>{
+                    use nphysics3d::volumetric::Volumetric;
+                    use nalgebra;
+
+                    let inertia = geom.inertia(1.0);
+                    let center_of_mass = geom.center_of_mass();
+                    let handle = if !is_static{
+                        game.physic_world.add_rigid_body(Isometry3::new(Vector3::repeat(0.0), nalgebra::zero()), inertia, center_of_mass)
+                    }
+                    else{
+                        BodyHandle::ground()
+                    };
+                    game.physic_world.add_collider(
+                        0.01,
+                        geom,
+                        handle,
+                        Isometry3::identity(),
+                        Material::default(),
+                    );
+                    let channels = LUA_CHANNL_IN.0.lock().unwrap();
+                    let _ = channels.send(LuaCommand::ReturnRBhandler(handle));
                 },
                 GameCommand::GetObjects() => {
                     let mut objects = vec![];

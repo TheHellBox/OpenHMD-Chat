@@ -34,6 +34,7 @@ pub enum MessageType{
     GameObjectChangedPosition(String, Point3<f32>),
     GameObjectChangedModel(String, String),
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
+    GameObjectChangedScale(String, (f32, f32, f32)),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
     LuaScript(String),
@@ -67,11 +68,11 @@ impl Network {
         config.connection_closing_threshold = Duration::from_millis(15000);
         config.connection_drop_threshold = Duration::from_millis(5000);
         config.connection_init_threshold = Duration::from_millis(15000);
-        config.send_rate = 1024;
+        config.send_rate = 2048;
         let server = Server::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
         let server_info = ServerInfo{
             players: vec![],
-            send_rate: 1024,
+            send_rate: 2048,
             audio_quality: 16000
         };
         let (tx_in, rx_in) = channel::<(MessageKind, MessageType, MsgDst)>();
@@ -168,6 +169,10 @@ impl Network {
                                 let player_disconnected = MessageType::PlayerDisconnected(player_id);
                                 conn.send(MessageKind::Reliable, serialize(&player_disconnected).unwrap());
                             }
+                        }
+                        {
+                            let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                            let _ = channels.send(GameCommand::CallEvent("OnClientDisconnected".to_string(), vec![AnyLuaValue::LuaNumber(player_id as f64)]));
                         }
                     },
                     _ => {}

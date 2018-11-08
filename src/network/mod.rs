@@ -25,6 +25,7 @@ pub enum NetworkCommand{
     CreateGameobject(String),
     RemovePlayerGameobject(u32),
     ChangeGameObjectPosition(String, Point3<f32>),
+    ChangeGameObjectScale(String, (f32, f32, f32)),
     ChangeGameObjectRotation(String, UnitQuaternion<f32>),
     ChangeGameObjectModel(String, String),
     SendPlayerInfo(),
@@ -39,6 +40,7 @@ pub enum MessageType{
     GameObjectChangedPosition(String, Point3<f32>),
     GameObjectChangedModel(String, String),
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
+    GameObjectChangedScale(String, (f32, f32, f32)),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
     LuaScript(String),
@@ -132,6 +134,9 @@ impl Network {
                             },
                             MessageType::GameObjectChangedModel(name, model) => {
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectModel(name, model));
+                            },
+                            MessageType::GameObjectChangedScale(name, scale) => {
+                                let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectScale(name, scale));
                             },
                             MessageType::LuaScript(script) => {
                                 let channels = LUA_CHANNL_OUT.0.lock().unwrap();

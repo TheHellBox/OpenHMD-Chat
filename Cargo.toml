@@ -6,6 +6,7 @@ authors = ["TheHellBox <hellboxstudio@yandex.ru>"]
 [dependencies]
 openhmd-rs="0.1.9"
 alto="3.0.1"
+time = "0.1.40"
 cobalt="*"
 opus="*"
 serde="1.0"

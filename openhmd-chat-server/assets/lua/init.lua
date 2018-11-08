@@ -1,5 +1,10 @@
 local players = {}
 
+function tablelength(T)
+  local count = 0
+  for _ in pairs(T) do count = count + 1 end
+  return count
+end
 
 AddEvent("OnClientConnected", "init_player", function(id)
     player = Player.GetByID(id)
@@ -35,6 +40,7 @@ AddEvent("OnClientConnected", "init_player", function(id)
         World.LoadModel("./assets/models/default/head.obj", "player_head")
         World.LoadModel("./assets/models/default/body.obj", "player_body")
         World.LoadModel("./assets/models/default/hat.obj", "player_hat")
+        World.LoadModel("./assets/models/cube/cube.obj", "cube")
 
         local player_hat = World.GetGameObject("player_hat"..connection_id())
         player_hat:SetModel("None")
@@ -45,10 +51,24 @@ AddEvent("OnClientConnected", "init_player", function(id)
         local player_body = World.GetGameObject("player_body"..connection_id())
         player_body:SetModel("None")
     ]===])
+end)
 
+AddEvent("OnClientDisconnected", "remove_player", function(id)
+    print("disconected")
+    for k, v in pairs(players) do
+        if v[2]:Id() == id then
+            for k, v in pairs(v[1]) do
+                v:Remove()
+            end
+            table.remove(players, k)
+        end
+    end
 end)
 
 AddEvent("Update", "update_players_position", function()
+    local collider_pos = cube:GetPosition()
+    print(collider_pos[1], collider_pos[2], collider_pos[3])
+
     for k, v in pairs(players) do
         local net_player = v[2]
 

@@ -1,3 +1,5 @@
+extern crate time;
+
 use render::Window;
 use std::collections::HashMap;
 use network::{NetworkCommand, NetworkEvent};
@@ -12,6 +14,7 @@ pub mod gameobject;
 #[derive(Clone)]
 pub struct Game{
     pub gameobjects: HashMap<String, gameobject::GameObject>,
+    pub pos_update_time: i64,
     player_rotation: f32
 }
 
@@ -19,7 +22,8 @@ impl Game{
     pub fn new() -> Game{
         Game{
             gameobjects: HashMap::new(),
-            player_rotation: 0.0
+            player_rotation: 0.0,
+            pos_update_time: 0
         }
     }
     pub fn spawn_game_object(&mut self, go: gameobject::GameObject){
@@ -28,11 +32,20 @@ impl Game{
 
     pub fn update(&mut self, net_rx: &mut Receiver<NetworkCommand>, net_tx: &mut Sender<NetworkEvent>, window: &mut Window){
         use support::direction;
+        let current_time = time::get_time();
+        let current_time = (current_time.sec as i64 * 1000) +
+                           (current_time.nsec as i64 / 1000 / 1000);
+
         controls::update_controls(window);
-        let position = window.character_view.position.vector;
-        let position = Point3::new(position[0], position[1], position[2]);
-        let _ = net_tx.send(NetworkEvent::SendPosition(position));
-        let _ = net_tx.send(NetworkEvent::SendRotation(window.head_dir));
+        if current_time > self.pos_update_time {
+            let position = window.character_view.position.vector;
+            let position = Point3::new(position[0], position[1], position[2]);
+
+            let _ = net_tx.send(NetworkEvent::SendPosition(position));
+            let _ = net_tx.send(NetworkEvent::SendRotation(window.head_dir));
+
+            self.pos_update_time = current_time + 100;
+        }
         for x in net_rx.try_iter(){
             match x{
                 NetworkCommand::CreatePlayerGameobject(id) => {
@@ -77,6 +90,16 @@ impl Game{
                     match self.gameobjects.get_mut(&name){
                         Some(x) => {
                             x.rotation = rotation;
+                        }
+                        None => {
+                            println!("Cannot find gameobject with name {}", name);
+                        }
+                    }
+                },
+                NetworkCommand::ChangeGameObjectScale(name, scale) => {
+                    match self.gameobjects.get_mut(&name){
+                        Some(x) => {
+                            x.scale = scale;
                         }
                         None => {
                             println!("Cannot find gameobject with name {}", name);
