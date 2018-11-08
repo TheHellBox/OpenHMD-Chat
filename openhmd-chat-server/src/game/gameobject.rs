@@ -1,4 +1,4 @@
-use nalgebra::{Point3, UnitQuaternion, Quaternion, Vector3};
+use nalgebra::{Point3, UnitQuaternion, Quaternion, Vector3, Translation3};
 use nphysics3d::object::{BodyHandle, BodyPartMut};
 use nphysics3d::world::World;
 use scripting_engine;
@@ -42,7 +42,9 @@ impl GameObject{
             let body_part = world.body_part_mut(physic_body);
             match body_part{
                 BodyPartMut::RigidBody(body) => {
-                    body.set_position(Isometry3::new(Vector3::new(pos[0], pos[1], pos[2]), nalgebra::zero()))
+                    let mut isometry = body.position();
+                    isometry.translation = Translation3::new(pos[0], pos[1], pos[2]);
+                    body.set_position(isometry)
                 },
                 _ => {}
             }
@@ -51,6 +53,22 @@ impl GameObject{
     }
     pub fn set_rotation(&mut self, rot: Quaternion<f32>){
         self.rotation = UnitQuaternion::from_quaternion(rot);
+    }
+    pub fn set_rotation_physic(&mut self, rot: UnitQuaternion<f32>, world: &mut World<f32>){
+        use nalgebra::{Isometry3};
+        use nalgebra;
+        if let Some(physic_body) = self.physic_body{
+            let body_part = world.body_part_mut(physic_body);
+            match body_part{
+                BodyPartMut::RigidBody(body) => {
+                    let mut isometry = body.position();
+                    isometry.rotation = rot;
+                    body.set_position(isometry)
+                },
+                _ => {}
+            }
+        }
+        self.rotation = rot;
     }
     pub fn set_rotation_unit(&mut self, rot: UnitQuaternion<f32>){
         self.rotation = rot;

@@ -29,6 +29,11 @@ AddEvent("OnClientConnected", "init_player", function(id)
     player_hat:with_position(0, 0, 0)
     player_hat = player_hat:build()
 
+    collider = World.CreateCollider()
+    collider:WithSize(0.1, 0.5, 0.1)
+    collider = collider:Build()
+    player_body:AttachCollider(collider)
+
     player_parts[1] = player_head
     player_parts[2] = player_body
     player_parts[3] = player_hat

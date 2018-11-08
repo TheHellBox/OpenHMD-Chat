@@ -11,7 +11,7 @@ use cobalt::MessageKind;
 use std::sync::{Arc, Mutex};
 use hlua::{Lua, AnyLuaValue};
 use network::{MessageType, MsgDst};
-use nphysics3d::object::{BodyHandle, Material};
+use nphysics3d::object::{BodyHandle, Material, BodyStatus};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use game::gameobject::{GameObjectBuilder, GameObject};
 use nalgebra::{Point3, UnitQuaternion, Vector3, Isometry3};
@@ -229,7 +229,7 @@ impl ScriptingEngine{
                 },
                 GameCommand::SetGameObjectRotation(name, rot) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
-                        x.set_rotation_unit(rot)
+                        x.set_rotation_physic(rot, &mut game.physic_world)
                     }
                     net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedRotation(name, rot), MsgDst::Boardcast()));
                 },
@@ -264,8 +264,12 @@ impl ScriptingEngine{
                     game.remove_game_object(name);
                 },
                 GameCommand::AttachCollider(name, collider) => {
+                    use nalgebra;
                     if let Some(ent) = game.gameobjects.get_mut(&name){
                         if let Some(handle) = collider.handle{
+                            let rb = game.physic_world.rigid_body_mut(handle).expect("Rigid-body not found.");
+                            let pos = ent.position;
+                            rb.set_position(Isometry3::new(Vector3::new(pos[0], pos[1], pos[2]), nalgebra::zero()));
                             ent.set_physic_body(handle);
                         }
                     }
@@ -276,19 +280,22 @@ impl ScriptingEngine{
 
                     let inertia = geom.inertia(1.0);
                     let center_of_mass = geom.center_of_mass();
-                    let handle = if !is_static{
-                        game.physic_world.add_rigid_body(Isometry3::new(Vector3::repeat(0.0), nalgebra::zero()), inertia, center_of_mass)
+                    let handle = game.physic_world.add_rigid_body(Isometry3::new(Vector3::repeat(0.0), nalgebra::zero()), inertia, center_of_mass);
+                    {
+                        let rb = game.physic_world.rigid_body_mut(handle).expect("Rigid-body not found.");
+                        if is_static {
+                            rb.set_status(BodyStatus::Kinematic);
+                        }
                     }
-                    else{
-                        BodyHandle::ground()
-                    };
-                    game.physic_world.add_collider(
-                        0.01,
-                        geom,
-                        handle,
-                        Isometry3::identity(),
-                        Material::default(),
-                    );
+                    {
+                        game.physic_world.add_collider(
+                            0.01,
+                            geom,
+                            handle,
+                            Isometry3::identity(),
+                            Material::default(),
+                        );
+                    }
                     let channels = LUA_CHANNL_IN.0.lock().unwrap();
                     let _ = channels.send(LuaCommand::ReturnRBhandler(handle));
                 },
