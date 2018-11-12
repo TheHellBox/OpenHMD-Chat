@@ -7,10 +7,10 @@ pub fn rand_string(len: u32) -> String {
     (0..len).map(|_| (0x20u8 + (random::<f32>() * 96.0) as u8) as char).collect()
 }
 
-pub fn random_number() -> u32{
+/*pub fn random_number() -> u32{
     let mut rng = thread_rng();
     rng.gen_range(0, 999999)
-}
+}*/
 
 pub fn rand_translation(range_x_z: (f32, f32), range_y: (f32, f32)) -> Translation3<f32> {
     let mut rng = thread_rng();

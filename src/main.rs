@@ -33,8 +33,7 @@ mod scripting_engine;
 
 use nalgebra::geometry::{Point3, UnitQuaternion};
 use std::sync::{Arc, Mutex};
-use std::{thread, time, process};
-use clap::{Arg, App};
+use std::{thread, time};
 
 fn main() {
     let settings = game::settings::Settings::new();

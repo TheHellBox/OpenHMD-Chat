@@ -1,6 +1,6 @@
 use hlua;
 use game::GameCommand;
-use scripting_engine::{LUA_CHANNL_OUT, LUA_CHANNL_IN, LuaCommand, get_game_value};
+use scripting_engine::{LUA_CHANNL_OUT, get_game_value};
 
 pub struct LuaPlayer{
     pub id: u32

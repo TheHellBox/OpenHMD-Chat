@@ -1,11 +1,9 @@
 pub mod std_lib;
 
 use ui;
-use support;
 use network;
 use hlua;
 use std::fs;
-use std::collections::HashMap;
 use hlua::{Lua, AnyLuaValue};
 use game::Game;
 use std::io::copy;
@@ -169,7 +167,6 @@ impl ScriptingEngine{
                 let mut ui = lua.empty_array("Ui");
                 ui.set("AddButton", hlua::function2(|callback: String, args: Vec<AnyLuaValue>| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                    let id = support::random_number();
                     let button = ui::lua_ui::LuaRawButton::new(callback, args);
                     let _ = channels.send(LuaEvent::AddButton(button.clone()));
                     button
@@ -201,7 +198,7 @@ impl ScriptingEngine{
                         LuaLocalCommand::CallEvent(name, args) => {
                             let mut call_event_fn: Option<hlua::LuaFunction<_>> = lua.get("CallEvent");
                             if let Some(mut call_event) = call_event_fn{
-                                let result: Option<hlua::AnyLuaValue> = match call_event.call_with_args((name, args)) {
+                                let _: Option<hlua::AnyLuaValue> = match call_event.call_with_args((name, args)) {
                                     Ok(res) => {Some(res)},
                                     Err(err) => {
                                         println!("LUA ERROR: {:?}", err);
@@ -281,7 +278,7 @@ impl ScriptingEngine{
                         match valid{
                             true => {
                                 let mut path = Path::new("./assets/server_downloads/").join(file_path);
-                                fs::create_dir_all(&path);
+                                let _ = fs::create_dir_all(&path);
                                 Some(File::create(path.join(fname)).unwrap())
                             },
                             false => {
@@ -305,7 +302,6 @@ impl ScriptingEngine{
                 LuaEvent::UpdateButton(button) => {
                     window.ui.lua_ui.buttons.insert(button.id, button);
                 },
-                _ => {}
             }
         }
     }

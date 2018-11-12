@@ -1,5 +1,5 @@
 use render::Window;
-use nalgebra::{Point3, UnitQuaternion, Vector3};
+use nalgebra::{UnitQuaternion, Vector3};
 use glium::glutin::{Event, WindowEvent, VirtualKeyCode, ElementState};
 
 pub fn update_controls(window: &mut Window){
@@ -31,29 +31,21 @@ pub fn update_controls(window: &mut Window){
                                 VirtualKeyCode::W => {
                                     if !state {
                                         window.character_view.position.vector -= direction(window.head_dir, Vector3::new(0.0, 0.0, 1.0)) / 3.0;
-                                        let position = window.character_view.position.vector;
-                                        let position = Point3::new(position[0], position[1], position[2]);
                                     }
                                 },
                                 VirtualKeyCode::S => {
                                     if !state {
                                         window.character_view.position.vector += direction(window.head_dir, Vector3::new(0.0, 0.0, 1.0)) / 3.0;
-                                        let position = window.character_view.position.vector;
-                                        let position = Point3::new(position[0], position[1], position[2]);
                                     }
                                 },
                                 VirtualKeyCode::A => {
                                     if !state {
                                         window.character_view.position.vector -= direction(window.head_dir, Vector3::new(1.0, 0.0, 0.0)) / 3.0;
-                                        let position = window.character_view.position.vector;
-                                        let position = Point3::new(position[0], position[1], position[2]);
                                     }
                                 },
                                 VirtualKeyCode::D => {
                                     if !state {
                                         window.character_view.position.vector += direction(window.head_dir, Vector3::new(1.0, 0.0, 0.0)) / 3.0;
-                                        let position = window.character_view.position.vector;
-                                        let position = Point3::new(position[0], position[1], position[2]);
                                     }
                                 },
                                 _ => {}

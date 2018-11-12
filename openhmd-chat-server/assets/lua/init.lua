@@ -6,6 +6,10 @@ function tablelength(T)
   return count
 end
 
+function simple_lerp(a, b, weight)
+    return a + weight * (b-a)
+end
+
 AddEvent("OnClientConnected", "init_player", function(id)
     player = Player.GetByID(id)
 
@@ -71,29 +75,5 @@ AddEvent("OnClientDisconnected", "remove_player", function(id)
 end)
 
 AddEvent("Update", "update_players_position", function()
-    local collider_pos = cube:GetPosition()
-    print(collider_pos[1], collider_pos[2], collider_pos[3])
 
-    for k, v in pairs(players) do
-        local net_player = v[2]
-
-        local player_head = v[1][1]
-        local player_body = v[1][2]
-        local player_hat = v[1][3]
-
-        local pos = net_player:GetPosition()
-        local rot = net_player:GetRotation()
-
-        player_head:SetPosition(pos[1], pos[2] + 0.03, pos[3])
-        player_head:SetRotation(rot[1], rot[2], rot[3])
-
-        -- To avoid gimbal lock problems
-        local dir = player_head:Direction(0, 0, 1)
-
-        player_body:SetPosition(pos[1], pos[2] - 0.2, pos[3])
-        player_body:LookAt(-dir[1], 0.0, dir[3])
-
-        player_hat:SetPosition(pos[1], pos[2] + 0.05, pos[3])
-        player_hat:SetRotation(rot[1], rot[2], rot[3])
-    end
 end)

@@ -3,9 +3,8 @@ extern crate time;
 use render::Window;
 use std::collections::HashMap;
 use network::{NetworkCommand, NetworkEvent};
-use nalgebra::{Point3, UnitQuaternion, Vector3};
+use nalgebra::{Point3, UnitQuaternion};
 use std::sync::mpsc::{Sender, Receiver};
-use glium::glutin::{Event, WindowEvent, VirtualKeyCode, ElementState};
 
 pub mod settings;
 pub mod controls;
@@ -31,7 +30,6 @@ impl Game{
     }
 
     pub fn update(&mut self, net_rx: &mut Receiver<NetworkCommand>, net_tx: &mut Sender<NetworkEvent>, window: &mut Window){
-        use support::direction;
         let current_time = time::get_time();
         let current_time = (current_time.sec as i64 * 1000) +
                            (current_time.nsec as i64 / 1000 / 1000);
@@ -117,7 +115,6 @@ impl Game{
                     let _ = net_tx.send(NetworkEvent::SendPosition(position));
                     let _ = net_tx.send(NetworkEvent::SendRotation(rotation));
                 }
-                _ => {}
             }
         }
     }

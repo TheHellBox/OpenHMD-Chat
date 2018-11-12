@@ -2,12 +2,9 @@ use std::collections::HashMap;
 use hlua::AnyLuaValue;
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 
-use ncollide3d::shape::{Ball, Cuboid, ShapeHandle};
-use std::sync::mpsc::{channel, Sender, Receiver};
-use nphysics3d::object::{BodyHandle, Material};
-use nphysics3d::volumetric::Volumetric;
+use ncollide3d::shape::{ShapeHandle};
+use std::sync::mpsc::{Sender};
 use network::{MessageType, MsgDst};
-use scripting_engine::LuaEntity;
 use nphysics3d::world::World;
 use cobalt::MessageKind;
 
@@ -52,23 +49,19 @@ impl Game{
     }
     pub fn update(&mut self, net_tx: &mut Sender<(MessageKind, MessageType, MsgDst)>){
         self.physic_world.step();
-        for (k, game_object) in &mut self.gameobjects {
+        for (name, game_object) in &mut self.gameobjects {
             if let Some(physic_body) = game_object.physic_body{
                 let position = self.physic_world.body_part(physic_body).position();
-                let rotation = position.rotation.to_euler_angles();
+                let rotation = position.rotation.euler_angles();
                 let rotation = UnitQuaternion::from_euler_angles(rotation.0, rotation.1, rotation.2);
 
                 let position = position.translation.vector;
                 let position = Point3::new(position[0], position[1], position[2]);
                 game_object.set_position(position);
                 game_object.set_rotation_unit(rotation);
-                net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(game_object.name.clone(), position), MsgDst::Boardcast()));
-                net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedRotation(game_object.name.clone(), rotation), MsgDst::Boardcast()));
+                let _ = net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name.clone(), position), MsgDst::Boardcast()));
+                let _ = net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedRotation(name.clone(), rotation), MsgDst::Boardcast()));
             }
         }
-    }
-
-    pub fn fixed_update(&mut self){
-
     }
 }

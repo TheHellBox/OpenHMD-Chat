@@ -136,9 +136,11 @@ impl Network {
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectModel(name, model));
                             },
                             MessageType::GameObjectChangedScale(name, scale) => {
+                                println!("changed scale");
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectScale(name, scale));
                             },
                             MessageType::LuaScript(script) => {
+                                println!("lua script");
                                 let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                                 let _ = channels.send(LuaEvent::RunLua(script));
                             },

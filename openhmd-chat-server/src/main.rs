@@ -27,7 +27,7 @@ use cobalt::MessageKind;
 fn main() {
     let mut game = game::Game::new();
     let mut scripting_engine = scripting_engine::ScriptingEngine::new();
-    let (mut network, mut net_rx) = network::Network::new();
+    let (mut network, net_rx) = network::Network::new();
     let mut net_tx = network.tx_in.clone();
     thread::spawn(move || {
         network.listen("0.0.0.0:4460");
@@ -38,14 +38,13 @@ fn main() {
             match x{
                 network::NetworkCommand::SendGameObjects(id) => {
                     for (name, game_object) in &game.gameobjects{
-                        net_tx.send((MessageKind::Reliable, MessageType::CreateGameObject(game_object.name.clone()), MsgDst::Id(id)));
-                        net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedPosition(game_object.name.clone(), game_object.position), MsgDst::Id(id)));
-                        net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedRotation(game_object.name.clone(), game_object.rotation), MsgDst::Id(id)));
-                        net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedModel(game_object.name.clone(), game_object.render_object.clone()), MsgDst::Id(id)));
-                        net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedScale(game_object.name.clone(), game_object.scale), MsgDst::Id(id)));
+                        let _ = net_tx.send((MessageKind::Reliable, MessageType::CreateGameObject(name.clone()), MsgDst::Id(id)));
+                        let _ = net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedPosition(name.clone(), game_object.position), MsgDst::Id(id)));
+                        let _ = net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedRotation(name.clone(), game_object.rotation), MsgDst::Id(id)));
+                        let _ = net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedModel(name.clone(), game_object.render_object.clone()), MsgDst::Id(id)));
+                        let _ = net_tx.send((MessageKind::Reliable, MessageType::GameObjectChangedScale(name.clone(), game_object.scale), MsgDst::Id(id)));
                     }
-                },
-                _ => {}
+                }
             }
         }
         game.update(&mut net_tx);

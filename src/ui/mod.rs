@@ -6,7 +6,7 @@ use render;
 use support;
 use glium::{Display};
 use glium::texture::Texture2d;
-use conrod::{widget, Positionable, Widget, Colorable, Sizeable, Labelable};
+use conrod::{widget, Positionable, Widget, Sizeable, Labelable};
 // I still don't really understand how conrod works, so this code can be pretty terrible
 widget_ids!(pub struct Ids { lua_widgets[], canvas, cursor });
 
@@ -74,7 +74,7 @@ impl render::Window{
         self.ui.ids.lua_widgets.resize(self.ui.lua_ui.buttons.len(), &mut ui_w.widget_id_generator());
         let mut ids = self.ui.ids.lua_widgets.iter();
 
-        for (id, button) in &self.ui.lua_ui.buttons {
+        for (_, button) in &self.ui.lua_ui.buttons {
             let id = ids.next().unwrap();
             for _click in widget::Button::new()
                 .w_h(button.size.0, button.size.1)

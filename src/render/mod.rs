@@ -1,14 +1,11 @@
 use glium::glutin::{ContextBuilder, EventsLoop, WindowBuilder, Event};
-use std::sync::mpsc::{Sender, Receiver};
 use nalgebra::core::{Matrix4, MatrixN};
 use glium::glutin::Event::WindowEvent;
 use glium::{glutin, Display, Program};
 use std::collections::HashMap;
 use game::settings::Settings;
-use network::NetworkEvent;
 use nalgebra::{UnitQuaternion, Quaternion};
 use openhmd_rs;
-use nalgebra;
 use ui;
 
 pub mod default_shaders;
@@ -117,7 +114,7 @@ impl Window{
 
         let draw_areas = HashMap::with_capacity(128);
 
-        let mut ui = ui::Ui::new(&display, (x_size, y_size));
+        let ui = ui::Ui::new(&display, (x_size, y_size));
 
         Window{
             display,

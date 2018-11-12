@@ -5,8 +5,8 @@ use std::sync::mpsc::channel;
 use hlua::AnyLuaValue;
 use scripting_engine::{LUA_CHANNL_OUT};
 // New Rust syntax
-use game::{gameobject::{GameObject, GameObjectBuilder}, GameCommand};
-use nalgebra::{Translation3, Point3, UnitQuaternion};
+use game::{gameobject::{GameObjectBuilder}, GameCommand};
+use nalgebra::{Point3, UnitQuaternion};
 use cobalt::{
     BinaryRateLimiter, Config, NoopPacketModifier, MessageKind, UdpSocket,
     Server, ServerEvent, ConnectionID
@@ -22,7 +22,6 @@ pub enum NetworkEvent{
 
 pub enum NetworkCommand{
     SendGameObjects(u32),
-    GameCommand(GameCommand),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -68,11 +67,11 @@ impl Network {
         config.connection_closing_threshold = Duration::from_millis(15000);
         config.connection_drop_threshold = Duration::from_millis(5000);
         config.connection_init_threshold = Duration::from_millis(15000);
-        config.send_rate = 2048;
+        config.send_rate = 1024;
         let server = Server::<UdpSocket, BinaryRateLimiter, NoopPacketModifier>::new(config);
         let server_info = ServerInfo{
             players: vec![],
-            send_rate: 2048,
+            send_rate: 1024,
             audio_quality: 16000
         };
         let (tx_in, rx_in) = channel::<(MessageKind, MessageType, MsgDst)>();
@@ -114,7 +113,7 @@ impl Network {
                             },
                             NetworkEvent::SendPosition(position) => {
                                 let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                                channels.send( GameCommand::SetGameObjectPosition(format!("player{}", id_u32), position) );
+                                let _ = channels.send( GameCommand::SetGameObjectPosition(format!("player{}", id_u32), position) );
                                 for (_, conn) in self.server.connections() {
                                     if conn.id() != id{
                                         let msg = MessageType::GameObjectChangedPosition(format!("player{}", id_u32), position);
@@ -124,7 +123,7 @@ impl Network {
                             },
                             NetworkEvent::SendRotation(rotation) => {
                                 let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                                channels.send( GameCommand::SetGameObjectRotation(format!("player{}", id_u32), rotation) );
+                                let _ = channels.send( GameCommand::SetGameObjectRotation(format!("player{}", id_u32), rotation) );
                                 for (_, conn) in self.server.connections() {
                                     if conn.id() != id{
                                         let msg = MessageType::GameObjectChangedRotation(format!("player{}", id_u32), rotation);
@@ -155,7 +154,7 @@ impl Network {
                             else{
                                 let server_info_raw = serialize(&self.server_info).unwrap();
                                 let server_info = serialize(&MessageType::ServerInfo(server_info_raw)).unwrap();
-                                self.tx_out.send(NetworkCommand::SendGameObjects(id_u32));
+                                let _ = self.tx_out.send(NetworkCommand::SendGameObjects(id_u32));
                                 conn.send(MessageKind::Reliable, server_info);
                             }
                         }

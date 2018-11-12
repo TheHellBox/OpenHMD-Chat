@@ -6,7 +6,6 @@ pub fn rand_string(len: u32) -> String {
 }
 
 pub fn direction(rotation: UnitQuaternion<f32>, vec: Vector3<f32>) -> Vector3<f32>{
-    use alga::linear::Transformation;
     let mut direction = vec;
     let matrix = rotation.to_homogeneous();
     direction = matrix.transform_vector(&direction);

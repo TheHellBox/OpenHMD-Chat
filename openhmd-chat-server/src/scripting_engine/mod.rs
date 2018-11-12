@@ -5,7 +5,6 @@ use std::fs;
 use game::Game;
 use std::{thread};
 use std::fs::File;
-use std::path::Path;
 use std::error::Error;
 use cobalt::MessageKind;
 use std::sync::{Arc, Mutex};
@@ -13,7 +12,7 @@ use hlua::{Lua, AnyLuaValue};
 use network::{MessageType, MsgDst};
 use nphysics3d::object::{BodyHandle, Material, BodyStatus};
 use std::sync::mpsc::{channel, Sender, Receiver};
-use game::gameobject::{GameObjectBuilder, GameObject};
+use game::gameobject::{GameObjectBuilder};
 use nalgebra::{Point3, UnitQuaternion, Vector3, Isometry3};
 use game::{player::LuaPlayer, GameCommand, collider_builder::{ColliderBuilder, LuaCollider}};
 
@@ -187,7 +186,7 @@ impl ScriptingEngine{
                         LuaLocalCommand::CallEvent(name, args) => {
                             let mut call_event_fn: Option<hlua::LuaFunction<_>> = lua.get("CallEvent");
                             if let Some(mut call_event) = call_event_fn{
-                                let result: Option<hlua::AnyLuaValue> = match call_event.call_with_args((name, args)) {
+                                let _result: Option<hlua::AnyLuaValue> = match call_event.call_with_args((name, args)) {
                                     Ok(res) => {Some(res)},
                                     Err(err) => {
                                         println!("LUA ERROR: {:?}", err);
@@ -214,24 +213,24 @@ impl ScriptingEngine{
         for x in data{
             match x{
                 GameCommand::SpawnGameObject(game_object) => {
-                    net_tx.send((MessageKind::Ordered, MessageType::CreateGameObject(game_object.name.clone()), MsgDst::Boardcast()));
-                    net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedPosition(game_object.name.clone(), game_object.position), MsgDst::Boardcast()));
-                    net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedRotation(game_object.name.clone(), game_object.rotation), MsgDst::Boardcast()));
-                    net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedModel(game_object.name.clone(), game_object.render_object.clone()), MsgDst::Boardcast()));
-                    net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedScale(game_object.name.clone(), game_object.scale), MsgDst::Boardcast()));
+                    let _ = net_tx.send((MessageKind::Ordered, MessageType::CreateGameObject(game_object.name.clone()), MsgDst::Boardcast()));
+                    let _ = net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedPosition(game_object.name.clone(), game_object.position), MsgDst::Boardcast()));
+                    let _ = net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedRotation(game_object.name.clone(), game_object.rotation), MsgDst::Boardcast()));
+                    let _ = net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedModel(game_object.name.clone(), game_object.render_object.clone()), MsgDst::Boardcast()));
+                    let _ = net_tx.send((MessageKind::Ordered, MessageType::GameObjectChangedScale(game_object.name.clone(), game_object.scale), MsgDst::Boardcast()));
                     game.spawn_game_object(game_object);
                 },
                 GameCommand::SetGameObjectPosition(name, pos) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
                         x.set_position_physic(pos, &mut game.physic_world)
                     }
-                    net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name, pos), MsgDst::Boardcast()));
+                    let _ = net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name, pos), MsgDst::Boardcast()));
                 },
                 GameCommand::SetGameObjectRotation(name, rot) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
                         x.set_rotation_physic(rot, &mut game.physic_world)
                     }
-                    net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedRotation(name, rot), MsgDst::Boardcast()));
+                    let _ = net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedRotation(name, rot), MsgDst::Boardcast()));
                 },
                 GameCommand::GetGameObjectPosition(name) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
@@ -246,7 +245,7 @@ impl ScriptingEngine{
                 GameCommand::GetGameObjectRotation(name) => {
                     if let Some(x) = game.gameobjects.get_mut(&name){
                         let channels = LUA_CHANNL_IN.0.lock().unwrap();
-                        let rotation = x.rotation.to_euler_angles();
+                        let rotation = x.rotation.euler_angles();
                         let _ = channels.send(LuaCommand::ReturnVec(vec![rotation.0, rotation.1, rotation.2]));
                     }
                     else{
@@ -255,7 +254,7 @@ impl ScriptingEngine{
                     }
                 },
                 GameCommand::SendLua(script, id) => {
-                    net_tx.send((MessageKind::Reliable, MessageType::LuaScript(script), MsgDst::Id(id)));
+                    let _ = net_tx.send((MessageKind::Reliable, MessageType::LuaScript(script), MsgDst::Id(id)));
                 },
                 GameCommand::CallEvent(name, args) => {
                     let _ = self.tx.send(LuaLocalCommand::CallEvent(name, args));
@@ -301,15 +300,12 @@ impl ScriptingEngine{
                 },
                 GameCommand::GetObjects() => {
                     let mut objects = vec![];
-                    for (name, x) in &game.gameobjects{
+                    for (name, _) in &game.gameobjects{
                         objects.push(LuaEntity{name: name.clone()});
                     }
                     let channels = LUA_CHANNL_IN.0.lock().unwrap();
                     let _ = channels.send(LuaCommand::GetObjects(objects));
                 },
-                _ => {
-
-                }
             }
         }
     }

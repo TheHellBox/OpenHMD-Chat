@@ -112,7 +112,6 @@ impl AudioWrapper{
                         AudioEvent::RemoveSource(name) => {
                             sources.remove(&name);
                         },
-                        _ => {}
                     }
                 }
                 for (_, src) in &mut sources{

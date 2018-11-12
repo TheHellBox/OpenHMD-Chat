@@ -1,9 +1,8 @@
 use hlua;
-use support;
 use game::GameCommand;
 use ncollide3d::shape::{Cuboid, ShapeHandle};
-use nphysics3d::object::{BodyHandle, Material};
-use nalgebra::{Point3, UnitQuaternion, Vector3};
+use nphysics3d::object::{BodyHandle};
+use nalgebra::{Vector3};
 use scripting_engine::{LUA_CHANNL_OUT, LUA_CHANNL_IN, LuaCommand};
 
 #[derive(Clone)]
@@ -11,8 +10,8 @@ pub struct LuaCollider {
     pub handle: Option<BodyHandle>
 }
 implement_lua_read!(LuaCollider);
-implement_lua_push!(LuaCollider, |mut metatable| {
-    let mut index = metatable.empty_array("__index");
+implement_lua_push!(LuaCollider, |mut _metatable| {
+    //let mut index = metatable.empty_array("__index");
 });
 
 pub struct ColliderBuilder {

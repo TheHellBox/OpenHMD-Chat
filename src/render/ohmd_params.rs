@@ -1,4 +1,4 @@
-use render::{Window, m16_to_4x4};
+use render::{m16_to_4x4};
 
 use openhmd_rs::{ohmd_int_value, ohmd_float_value, Device};
 
