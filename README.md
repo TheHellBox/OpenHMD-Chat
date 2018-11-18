@@ -35,6 +35,6 @@ libopenhmd, liblua5.2, libopus-dev, openal-dev
   - [ ] Master server(Server list)
   - [x] Server LUA API to work with players(Change models, change positions, etc)
   - [ ] New default spawn location
-  - [ ] Collision and ray casting
+  - [x] Collision and ray casting
   - [x] Server side physic
   - [ ] Default game modes
