@@ -1,6 +1,5 @@
 use nalgebra::geometry::{Perspective3, UnitQuaternion, Quaternion, Translation3};
 use nalgebra::{Matrix4};
-use support::rand_translation;
 
 pub struct CharacterView{
     pub position: Translation3<f32>,
@@ -31,7 +30,7 @@ impl Camera{
 impl CharacterView{
     pub fn new() -> CharacterView{
         CharacterView{
-            position: rand_translation((-0.5, 0.5), (0.5, 0.6)),
+            position: Translation3::new(0.0, 0.0, 0.0),
             rotation: UnitQuaternion::from_quaternion(Quaternion::new(0.0, 0.0, 1.0, 0.0)),
         }
     }

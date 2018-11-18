@@ -11,6 +11,7 @@ bincode="1.0"
 alga="0.6"
 nalgebra={ version = "0.16", features = ["serde-serialize"] }
 hlua="0.4"
+time="*"
 rand="*"
 lazy_static = "1.1.0"
 nphysics3d = "0.9"

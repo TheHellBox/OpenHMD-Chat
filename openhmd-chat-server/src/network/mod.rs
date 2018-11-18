@@ -17,6 +17,7 @@ pub enum NetworkEvent{
     SendMsg(Vec<u8>),
     SendAudio(Vec<u8>),
     SendPosition(Point3<f32>),
+    SendKeyboardInput(u32, bool),
     SendRotation(UnitQuaternion<f32>),
 }
 
@@ -34,6 +35,8 @@ pub enum MessageType{
     GameObjectChangedModel(String, String),
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
     GameObjectChangedScale(String, (f32, f32, f32)),
+    ChangeCameraRotation(UnitQuaternion<f32>),
+    ChangeCameraPosition(Point3<f32>),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
     LuaScript(String),
@@ -111,16 +114,6 @@ impl Network {
                                     }
                                 }
                             },
-                            NetworkEvent::SendPosition(position) => {
-                                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-                                let _ = channels.send( GameCommand::SetGameObjectPosition(format!("player{}", id_u32), position) );
-                                for (_, conn) in self.server.connections() {
-                                    if conn.id() != id{
-                                        let msg = MessageType::GameObjectChangedPosition(format!("player{}", id_u32), position);
-                                        conn.send(MessageKind::Instant, serialize(&msg).unwrap());
-                                    }
-                                }
-                            },
                             NetworkEvent::SendRotation(rotation) => {
                                 let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                                 let _ = channels.send( GameCommand::SetGameObjectRotation(format!("player{}", id_u32), rotation) );
@@ -130,6 +123,11 @@ impl Network {
                                         conn.send(MessageKind::Instant, serialize(&msg).unwrap());
                                     }
                                 }
+                            },
+                            NetworkEvent::SendKeyboardInput(key, pressed) => {
+                                let args = vec![AnyLuaValue::LuaNumber(id_u32 as f64), AnyLuaValue::LuaNumber(key as f64), AnyLuaValue::LuaBoolean(pressed)];
+                                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                                let _ = channels.send( GameCommand::CallEvent("OnKeyboardInput".to_string(), args) );
                             },
                             _ => {}
                         }

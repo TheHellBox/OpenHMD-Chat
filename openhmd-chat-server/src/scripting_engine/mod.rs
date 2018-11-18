@@ -1,8 +1,10 @@
+extern crate time;
+
 pub mod std_lib;
 
 use hlua;
 use std::fs;
-use game::Game;
+use game::{Game, raycasting::{RaycastResult, RaycastBuilder}};
 use std::{thread};
 use std::fs::File;
 use std::error::Error;
@@ -27,8 +29,10 @@ lazy_static! {
     };
 }
 
+#[derive(Clone)]
 pub enum LuaCommand{
     ReturnVec(Vec<f32>),
+    ReturnRaycast(RaycastResult),
     ReturnRBhandler(BodyHandle),
     GetObjects(Vec<LuaEntity>),
 }
@@ -37,30 +41,26 @@ pub enum LuaLocalCommand{
     CallEvent(String, Vec<AnyLuaValue>)
 }
 
+#[derive(Clone)]
 pub struct LuaEntity{
     pub name: String
 }
 
 pub fn get_game_value(game_cmd: GameCommand) -> Vec<f32>{
     {
-        let channels = LUA_CHANNL_OUT.0.lock().unwrap();
-        let _ = channels.send(game_cmd);
+        let _ = LUA_CHANNL_OUT.0.lock().unwrap().send(game_cmd);
     }
-    let channels = LUA_CHANNL_IN.1.lock().unwrap();
-    let data = channels.recv();
-    if data.is_ok(){
-        let data = data.unwrap();
-        match data{
-            LuaCommand::ReturnVec(pos) => {
-                pos
-            }
-            _ => {
-                vec![0.0, 0.0, 0.0]
-            }
+    let data = {
+        let data = LUA_CHANNL_IN.1.lock().unwrap().recv();
+        data.unwrap_or(LuaCommand::ReturnVec(vec![0.0, 0.0, 0.0])).clone()
+    };
+    match data{
+        LuaCommand::ReturnVec(pos) => {
+            pos
         }
-    }
-    else{
-        vec![0.0, 0.0, 0.0]
+        _ => {
+            vec![0.0, 0.0, 0.0]
+        }
     }
 }
 
@@ -113,7 +113,7 @@ implement_lua_push!(LuaEntity, |mut metatable| {
             get_game_value(GameCommand::GetGameObjectRotation(ent.name.clone()))
         }
     ));
-    index.set("AttachCollider", hlua::function2(|ent: &mut LuaEntity, collider: &mut LuaCollider|
+    index.set("AttachRigidBody", hlua::function2(|ent: &mut LuaEntity, collider: &mut LuaCollider|
         {
             let channels = LUA_CHANNL_OUT.0.lock().unwrap();
             let _ = channels.send(GameCommand::AttachCollider(ent.name.clone(), collider.clone()));
@@ -127,7 +127,7 @@ pub struct ScriptingEngine{
 
 impl ScriptingEngine{
     pub fn new() -> ScriptingEngine{
-        use time::Duration;
+        use std::time::Duration;
         let (tx, rx) = channel::<LuaLocalCommand>();
         thread::spawn(move || {
             let mut lua = Lua::new();
@@ -136,11 +136,19 @@ impl ScriptingEngine{
 
             lua.execute::<()>(std_lib::LUA_STD_LIB_EVENTS).unwrap();
 
+            lua.set("OsTime", hlua::function0(|| {
+                let current_time = time::get_time();
+                let current_time = (current_time.sec as i64 * 1000) +
+                                   (current_time.nsec as i64 / 1000 / 1000);
+                current_time as f64
+            }));
+
             lua.openlibs();
             {
                 let mut world = lua.empty_array("World");
                 world.set("CreateGameObject", hlua::function0(|| GameObjectBuilder::new() ));
-                world.set("CreateCollider", hlua::function0(|| ColliderBuilder::new() ));
+                world.set("CreateRigidBody", hlua::function0(|| ColliderBuilder::new() ));
+                world.set("CreateRayCast", hlua::function0(|| RaycastBuilder::new() ));
                 world.set("GetGameObject", hlua::function1(|name: String| LuaEntity{name} ));
                 world.set("GetAllObjects", hlua::function0(|| {
                     let channels = LUA_CHANNL_OUT.0.lock().unwrap();
@@ -306,6 +314,32 @@ impl ScriptingEngine{
                     let channels = LUA_CHANNL_IN.0.lock().unwrap();
                     let _ = channels.send(LuaCommand::GetObjects(objects));
                 },
+                GameCommand::MakeRaycast(position, direction) => {
+                    use ncollide3d::query::Ray;
+                    use ncollide3d::world::CollisionGroups;
+
+                    let ray = Ray::new(position, direction);
+                    let collision_groups = CollisionGroups::new();
+                    let collision_world = game.physic_world.collision_world();
+                    let inter = collision_world.interferences_with_ray(&ray, &collision_groups);
+
+                    for (collison_object, intersection) in inter{
+                        let point = ray.origin + ray.dir * intersection.toi;
+                        let result = RaycastResult{
+                            object: "None".to_string(),
+                            position: point
+                        };
+                        let channels = LUA_CHANNL_IN.0.lock().unwrap();
+                        let _ = channels.send(LuaCommand::ReturnRaycast(result));
+                        break
+                    }
+                },
+                GameCommand::ChangePlayersCameraPosition(id, position) => {
+                    let _ = net_tx.send((MessageKind::Reliable, MessageType::ChangeCameraPosition(position), MsgDst::Id(id)));
+                }
+                GameCommand::ChangePlayersCameraRotation(id, rotation) => {
+                    let _ = net_tx.send((MessageKind::Reliable, MessageType::ChangeCameraRotation(rotation), MsgDst::Id(id)));
+                }
             }
         }
     }

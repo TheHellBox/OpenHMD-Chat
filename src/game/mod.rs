@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use network::{NetworkCommand, NetworkEvent};
 use nalgebra::{Point3, UnitQuaternion};
 use std::sync::mpsc::{Sender, Receiver};
+use glium::glutin::Event::WindowEvent;
 
 pub mod settings;
-pub mod controls;
 pub mod gameobject;
 
 #[derive(Clone)]
@@ -30,11 +30,28 @@ impl Game{
     }
 
     pub fn update(&mut self, net_rx: &mut Receiver<NetworkCommand>, net_tx: &mut Sender<NetworkEvent>, window: &mut Window){
+        use glium::glutin;
+
         let current_time = time::get_time();
         let current_time = (current_time.sec as i64 * 1000) +
                            (current_time.nsec as i64 / 1000 / 1000);
 
-        controls::update_controls(window);
+        for event in &window.events{
+            match event{
+                WindowEvent { ref event, .. } => match event{
+                    &glutin::WindowEvent::KeyboardInput{device_id: _, input} => {
+                        let scancode = input.scancode;
+                        let pressed = match input.state {
+                            glutin::ElementState::Pressed => true,
+                            glutin::ElementState::Released => false,
+                        };
+                        let _ = net_tx.send(NetworkEvent::SendKeyboardInput(scancode, pressed));
+                    },
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
         if current_time > self.pos_update_time {
             let position = window.character_view.position.vector;
             let position = Point3::new(position[0], position[1], position[2]);

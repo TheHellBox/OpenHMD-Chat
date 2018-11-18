@@ -13,6 +13,7 @@ use std::path::Path;
 use render::Window;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
+use nalgebra::{UnitQuaternion, Point3, Translation3};
 use reqwest;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use game::gameobject::{GameObjectBuilder, GameObject};
@@ -30,6 +31,8 @@ lazy_static! {
 
 pub enum LuaEvent{
     SetGameObjectPosition(String, (f32, f32, f32)),
+    ChangeCameraRotation(UnitQuaternion<f32>),
+    ChangeCameraPosition(Point3<f32>),
     SetGameObjectModel(String, String),
     UpdateButton(ui::lua_ui::LuaRawButton),
     CallEvent(String, Vec<AnyLuaValue>),
@@ -292,6 +295,12 @@ impl ScriptingEngine{
                 }
                 LuaEvent::CallEvent(name, args) => {
                     let _ = self.tx.send(LuaLocalCommand::CallEvent(name, args));
+                },
+                LuaEvent::ChangeCameraRotation(rotation) => {
+                    window.character_view.rotation = rotation;
+                },
+                LuaEvent::ChangeCameraPosition(position) => {
+                    window.character_view.position = Translation3::new(position[0], position[1], position[2]);
                 },
                 LuaEvent::LoadModel(path, name) => {
                     let _ = window.load_model_and_push(path, name, (0.1, 0.1, 0.1));

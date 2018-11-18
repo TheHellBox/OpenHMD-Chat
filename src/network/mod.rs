@@ -16,6 +16,7 @@ pub enum NetworkEvent{
     SendMsg(Vec<u8>),
     SendAudio(Vec<u8>),
     SendPosition(Point3<f32>),
+    SendKeyboardInput(u32, bool),
     SendRotation(UnitQuaternion<f32>),
 }
 
@@ -41,6 +42,8 @@ pub enum MessageType{
     GameObjectChangedModel(String, String),
     GameObjectChangedRotation(String, UnitQuaternion<f32>),
     GameObjectChangedScale(String, (f32, f32, f32)),
+    ChangeCameraRotation(UnitQuaternion<f32>),
+    ChangeCameraPosition(Point3<f32>),
     AudioEvent(Vec<u8>),
     ServerInfo(Vec<u8>),
     LuaScript(String),
@@ -136,13 +139,19 @@ impl Network {
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectModel(name, model));
                             },
                             MessageType::GameObjectChangedScale(name, scale) => {
-                                println!("changed scale");
                                 let _ = self.tx_out.send(NetworkCommand::ChangeGameObjectScale(name, scale));
                             },
                             MessageType::LuaScript(script) => {
-                                println!("lua script");
                                 let channels = LUA_CHANNL_OUT.0.lock().unwrap();
                                 let _ = channels.send(LuaEvent::RunLua(script));
+                            },
+                            MessageType::ChangeCameraPosition(position) => {
+                                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                                let _ = channels.send(LuaEvent::ChangeCameraPosition(position));
+                            },
+                            MessageType::ChangeCameraRotation(rotation) => {
+                                let channels = LUA_CHANNL_OUT.0.lock().unwrap();
+                                let _ = channels.send(LuaEvent::ChangeCameraRotation(rotation));
                             },
                             MessageType::ServerInfo(data) => {
                                 println!("Connected!");

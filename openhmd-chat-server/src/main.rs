@@ -20,7 +20,7 @@ mod network;
 mod support;
 mod scripting_engine;
 
-use std::{thread, time};
+use std::{thread, time::Duration};
 use network::{MsgDst, MessageType};
 use cobalt::MessageKind;
 
@@ -47,12 +47,12 @@ fn main() {
                 }
             }
         }
-        game.update(&mut net_tx);
-        scripting_engine.update(&mut game, &mut net_tx);
         {
             let channels = scripting_engine::LUA_CHANNL_OUT.0.lock().unwrap();
             let _ = channels.send(game::GameCommand::CallEvent("Update".to_string(), vec![]));
         }
-        thread::sleep(time::Duration::from_millis(16));
+        game.update(&mut net_tx);
+        scripting_engine.update(&mut game, &mut net_tx);
+        thread::sleep(Duration::from_millis(16));
     }
 }

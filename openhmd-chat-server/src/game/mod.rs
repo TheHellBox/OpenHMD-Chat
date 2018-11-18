@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use hlua::AnyLuaValue;
-use nalgebra::{Point3, UnitQuaternion, Vector3};
+use nalgebra::{Point3, Translation3, UnitQuaternion, Vector3};
 
 use ncollide3d::shape::{ShapeHandle};
 use std::sync::mpsc::{Sender};
@@ -9,6 +9,7 @@ use nphysics3d::world::World;
 use cobalt::MessageKind;
 
 pub mod collider_builder;
+pub mod raycasting;
 pub mod gameobject;
 pub mod player;
 
@@ -20,7 +21,10 @@ pub enum GameCommand{
     SpawnGameObject(gameobject::GameObject),
     AttachCollider(String, collider_builder::LuaCollider),
     GetGameObjectPosition(String),
+    MakeRaycast(Point3<f32>, Vector3<f32>),
     GetGameObjectRotation(String),
+    ChangePlayersCameraPosition(u32, Point3<f32>),
+    ChangePlayersCameraRotation(u32, UnitQuaternion<f32>),
     SendLua(String, u32),
     RemoveGameObject(String),
     GetObjects()
@@ -51,16 +55,19 @@ impl Game{
         self.physic_world.step();
         for (name, game_object) in &mut self.gameobjects {
             if let Some(physic_body) = game_object.physic_body{
-                let position = self.physic_world.body_part(physic_body).position();
-                let rotation = position.rotation.euler_angles();
-                let rotation = UnitQuaternion::from_euler_angles(rotation.0, rotation.1, rotation.2);
+                let body = self.physic_world.body_part(physic_body);
+                if body.is_active() == true {
+                    let position = body.position();
+                    let rotation = position.rotation.euler_angles();
+                    let rotation = UnitQuaternion::from_euler_angles(rotation.0, rotation.1, rotation.2);
 
-                let position = position.translation.vector;
-                let position = Point3::new(position[0], position[1], position[2]);
-                game_object.set_position(position);
-                game_object.set_rotation_unit(rotation);
-                let _ = net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name.clone(), position), MsgDst::Boardcast()));
-                let _ = net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedRotation(name.clone(), rotation), MsgDst::Boardcast()));
+                    let position = position.translation.vector;
+                    let position = Point3::new(position[0], position[1], position[2]);
+                    game_object.set_position(position);
+                    game_object.set_rotation_unit(rotation);
+                    let _ = net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedPosition(name.clone(), position), MsgDst::Boardcast()));
+                    let _ = net_tx.send((MessageKind::Instant, MessageType::GameObjectChangedRotation(name.clone(), rotation), MsgDst::Boardcast()));
+                }
             }
         }
     }

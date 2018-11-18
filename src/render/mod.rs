@@ -180,6 +180,7 @@ impl Window{
         let mut mouse_pos = self.mouse_pos;
         self.events_loop.poll_events(|event| {
             events.push(event.clone());
+            //let _ = net_tx.send(NetworkEvent::SendRotation(window.head_dir));
             match event{
                 WindowEvent { ref event, .. } => match event{
                     &glutin::WindowEvent::CursorMoved{position, ..} => {
