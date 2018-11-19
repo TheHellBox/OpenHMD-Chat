@@ -27,12 +27,6 @@ pub fn load(data: String, disp: &Display) -> Model{
             }
         };
         let mut diffuse_texture = material.diffuse_texture;
-        if diffuse_texture != ""{
-            let ch = diffuse_texture.chars().next().unwrap();
-            if ch != '/'{
-                diffuse_texture = format!("./assets/models/{}", diffuse_texture);
-            }
-        }
         for idx in &mesh.indices {
             let i = *idx as usize;
             let pos = [mesh.positions[3 * i], mesh.positions[3 * i + 1], mesh.positions[3 * i + 2]];
